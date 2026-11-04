@@ -270,7 +270,23 @@ export default function PublicLandingScreen() {
                 accessibilityLabel={`View ${dentist.name}`}
               >
                 <View style={styles.dentistAvatar}>
-                  <IconSymbol name="person.fill" size={27} color={colors.primary} />
+                  {dentist.profile_photo_url ? (
+                    <Image
+                      source={{ uri: dentist.profile_photo_url }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: 14,
+                      }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <IconSymbol
+                      name="person.fill"
+                      size={27}
+                      color={colors.primary}
+                    />
+                  )}
                 </View>
                 <View style={styles.dentistInfo}>
                   <AppText style={styles.dentistName}>{dentist.name}</AppText>

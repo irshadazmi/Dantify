@@ -218,9 +218,9 @@ export default function ServicesScreen() {
           <Pressable
             onPress={() => {
               if (isSuperAdmin) {
-                router.push(`/services/${item.id}/edit`);
+                router.push(`/dental-services/${item.id}/edit`);
               } else {
-                router.push(`/services/clinic/${item.id}/edit`);
+                router.push(`/dental-services/clinic/${item.id}/edit`);
               }
             }}
             style={[
@@ -293,9 +293,9 @@ export default function ServicesScreen() {
         actionTitle={isSuperAdmin ? 'Add Service' : 'Add Service'}
         onAction={() => {
           if (isSuperAdmin) {
-            router.push('/services/create');
+            router.push('/dental-services/create');
           } else {
-            router.push('/services/clinic/add');
+            router.push('/clinic-services/add');
           }
         }}
       />

@@ -2,12 +2,19 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasProfilePhoto;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Laboratory extends Model
 {
+    use HasProfilePhoto;
+
+    protected $appends = [
+        'profile_photo_url',
+    ];
+    
     protected $fillable = [
         'user_id',
         'name',
@@ -19,6 +26,7 @@ class Laboratory extends Model
         'postal_code',
         'email',
         'phone',
+        'profile_photo_path',
         'registration_number',
         'notes',
         'is_active',

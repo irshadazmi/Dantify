@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Dentist;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class DentistController extends Controller
 {
@@ -129,14 +130,29 @@ class DentistController extends Controller
             'gender' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:500'],
             'city' => ['nullable', 'string', 'max:100'],
+            'state' => ['nullable', 'string', 'max:100'],
             'country' => ['nullable', 'string', 'max:100'],
+            'postal_code' => ['nullable', 'string', 'max:20'],
             'phone' => ['nullable', 'string', 'max:30'],
             'email' => ['nullable', 'email', 'max:255'],
             'specialization' => ['nullable', 'string', 'max:150'],
+            'profile_photo' => [
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
         ]);
+
+        $photoPath = $request->file('profile_photo')
+            ? $request->file('profile_photo')->store('dentists', 'public')
+            : null;
+
+        unset($validated['profile_photo']);
 
         $dentist = Dentist::create([
             ...$validated,
+            'profile_photo_path' => $photoPath,
             'user_id' => $user->id,
         ]);
 
@@ -175,18 +191,44 @@ class DentistController extends Controller
             'gender' => ['sometimes', 'nullable', 'string', 'max:30'],
             'address' => ['sometimes', 'nullable', 'string', 'max:500'],
             'city' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'state' => ['sometimes', 'nullable', 'string', 'max:100'],
             'country' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'postal_code' => ['sometimes', 'nullable', 'string', 'max:20'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],
-            'specialization' => [
-                'sometimes',
+            'specialization' => ['sometimes', 'nullable', 'string', 'max:150'],
+            'profile_photo' => [
                 'nullable',
-                'string',
-                'max:150',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
             ],
+            'remove_profile_photo' => ['sometimes', 'boolean'],
         ]);
 
+        $oldPhotoPath = $dentist->profile_photo_path;
+
+        if ($request->hasFile('profile_photo')) {
+            $newPhotoPath = $request->file('profile_photo')
+                ->store('dentists', 'public');
+
+            $validated['profile_photo_path'] = $newPhotoPath;
+        } elseif ($request->boolean('remove_profile_photo')) {
+            $validated['profile_photo_path'] = null;
+        }
+
+        unset(
+            $validated['profile_photo'],
+            $validated['remove_profile_photo']
+        );
+
         $dentist->update($validated);
+
+        $newPhotoPath = $dentist->profile_photo_path;
+
+        if ($oldPhotoPath && $oldPhotoPath !== $newPhotoPath) {
+            Storage::disk('public')->delete($oldPhotoPath);
+        }
 
         return response()->json([
             'message' => 'Dentist profile updated successfully.',
@@ -203,7 +245,13 @@ class DentistController extends Controller
     ): JsonResponse {
         $this->authorizeDentistAccess($request, $dentist);
 
+        $photoPath = $dentist->profile_photo_path;
+
         $dentist->delete();
+
+        if ($photoPath) {
+            Storage::disk('public')->delete($photoPath);
+        }
 
         return response()->json([
             'message' => 'Dentist profile deleted successfully.',

@@ -2,11 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasProfilePhoto;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Staff extends Model
 {
+    use HasProfilePhoto;
+
+    protected $appends = [
+        'profile_photo_url',
+    ];
+    
     protected $table = 'staff';
 
     protected $fillable = [
@@ -22,6 +29,7 @@ class Staff extends Model
         'postal_code',
         'phone',
         'email',
+        'profile_photo_path',
         'is_active',
     ];
 

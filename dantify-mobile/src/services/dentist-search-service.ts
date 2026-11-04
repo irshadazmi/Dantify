@@ -10,6 +10,7 @@ export interface PublicSearchClinic {
   postal_code: string | null;
   phone: string | null;
   email: string | null;
+  profile_photo_url: string | null;
 }
 
 export interface PublicSearchDentist {
@@ -20,6 +21,7 @@ export interface PublicSearchDentist {
   gender?: string | null;
   phone?: string | null;
   email?: string | null;
+  profile_photo_url: string | null;
   clinics: PublicSearchClinic[];
 }
 

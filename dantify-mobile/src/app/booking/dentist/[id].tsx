@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   View,
@@ -13,16 +14,19 @@ import { useStyles } from '@/styles/styles';
 import dentistSearchService, {
   type PublicSearchDentist,
 } from '@/services/dentist-search-service';
+import { useAuth } from '@/contexts/auth-context';
 
 export default function DentistDetailsScreen() {
   const router = useRouter();
   const styles = useStyles();
   const colors = useAppColors();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   const params = useLocalSearchParams<{ id: string; name?: string }>();
   const dentistId = Number(params.id);
 
-  const [dentist, setDentist] = React.useState<PublicSearchDentist | null>(null);
+  const [dentist, setDentist] =
+    React.useState<PublicSearchDentist | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -39,19 +43,33 @@ export default function DentistDetailsScreen() {
       try {
         setLoading(true);
         setError(null);
-        const result = await dentistSearchService.getPublicById(dentistId);
-        if (!cancelled) setDentist(result);
-      } catch (requestError) {
-        console.warn('[PublicDentistProfile] Could not load profile.', requestError);
+
+        const result =
+          await dentistSearchService.getPublicById(dentistId);
+
         if (!cancelled) {
-          setError('Unable to load this dentist profile. Please try again.');
+          setDentist(result);
+        }
+      } catch (requestError) {
+        console.warn(
+          '[PublicDentistProfile] Could not load profile.',
+          requestError
+        );
+
+        if (!cancelled) {
+          setError(
+            'Unable to load this dentist profile. Please try again.'
+          );
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     void loadDentist();
+
     return () => {
       cancelled = true;
     };
@@ -70,8 +88,13 @@ export default function DentistDetailsScreen() {
           },
         ]}
       >
-        <ActivityIndicator size="large" color={colors.primary} />
-        <AppText style={{ marginTop: 12 }}>Loading dentist profile...</AppText>
+        <ActivityIndicator
+          size="large"
+          color={colors.primary}
+        />
+        <AppText style={{ marginTop: 12 }}>
+          Loading dentist profile...
+        </AppText>
       </View>
     );
   }
@@ -81,27 +104,72 @@ export default function DentistDetailsScreen() {
       <View
         style={[
           styles.container,
-          { flex: 1, backgroundColor: colors.background },
+          {
+            flex: 1,
+            backgroundColor: colors.background,
+          },
         ]}
       >
-        <AppText style={styles.title}>Dentist Details</AppText>
-        <AppText style={{ marginTop: 12, color: colors.danger }}>
+        <AppText style={styles.title}>
+          Dentist Details
+        </AppText>
+
+        <AppText
+          style={{
+            marginTop: 12,
+            color: colors.danger,
+          }}
+        >
           {error ?? 'Dentist profile not found.'}
         </AppText>
+
         <Pressable
           onPress={() => router.back()}
           style={[styles.button, { marginTop: 20 }]}
         >
-          <AppText style={styles.buttonText}>Back to Results</AppText>
+          <AppText style={styles.buttonText}>
+            Back to Results
+          </AppText>
         </Pressable>
       </View>
     );
   }
 
+  const handleCheckAvailability = () => {
+    if (authLoading) return;
+
+    if (!isAuthenticated) {
+      router.push('/(auth)/login' as never);
+      return;
+    }
+
+    router.push({
+      pathname: '/booking/availability',
+      params: { dentistId: String(dentist.id) },
+    });
+  };
+
+  // Remove duplicate clinic records before rendering.
+  // A clinic may appear multiple times because of multiple schedule records.
+  const clinics = Array.from(
+    new Map(
+      (dentist.clinics ?? []).map((clinic) => [
+        clinic.id,
+        clinic,
+      ])
+    ).values()
+  );
+
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+      style={{
+        flex: 1,
+        backgroundColor: colors.background,
+      }}
+      contentContainerStyle={{
+        padding: 16,
+        paddingBottom: 40,
+      }}
       showsVerticalScrollIndicator={false}
     >
       <Pressable
@@ -109,9 +177,12 @@ export default function DentistDetailsScreen() {
         accessibilityRole="button"
         style={{ marginBottom: 20 }}
       >
-        <AppText style={{ color: colors.primary }}>‹ Back to results</AppText>
+        <AppText style={{ color: colors.primary }}>
+          ‹ Back to results
+        </AppText>
       </Pressable>
 
+      {/* Dentist Profile Header */}
       <View
         style={{
           padding: 20,
@@ -124,19 +195,53 @@ export default function DentistDetailsScreen() {
       >
         <View
           style={{
-            width: 76,
-            height: 76,
-            borderRadius: 38,
+            width: 100,
+            height: 100,
+            borderRadius: 50,
             backgroundColor: colors.background,
             justifyContent: 'center',
             alignItems: 'center',
+            overflow: 'hidden',
+            borderWidth: 2,
+            borderColor: colors.border,
           }}
         >
-          <AppText style={{ fontSize: 34 }}>🦷</AppText>
+          {dentist.profile_photo_url ? (
+            <Image
+              source={{
+                uri: dentist.profile_photo_url,
+              }}
+              style={{
+                width: '100%',
+                height: '100%',
+              }}
+              resizeMode="cover"
+              onError={(event) => {
+                console.warn(
+                  '[PublicDentistProfile] Profile photo failed to load.',
+                  event.nativeEvent.error
+                );
+              }}
+            />
+          ) : (
+            <AppText style={{ fontSize: 40 }}>
+              🦷
+            </AppText>
+          )}
         </View>
-        <AppText style={[styles.title, { textAlign: 'center', marginTop: 14 }]}>
+
+        <AppText
+          style={[
+            styles.title,
+            {
+              textAlign: 'center',
+              marginTop: 14,
+            },
+          ]}
+        >
           {dentist.name}
         </AppText>
+
         <AppText
           style={{
             textAlign: 'center',
@@ -148,9 +253,19 @@ export default function DentistDetailsScreen() {
         </AppText>
       </View>
 
-      <AppText style={[styles.title, { marginTop: 24, marginBottom: 12 }]}>
+      {/* Professional Details */}
+      <AppText
+        style={[
+          styles.title,
+          {
+            marginTop: 24,
+            marginBottom: 12,
+          },
+        ]}
+      >
         Professional Details
       </AppText>
+
       <View
         style={{
           padding: 16,
@@ -161,16 +276,37 @@ export default function DentistDetailsScreen() {
           gap: 14,
         }}
       >
-        <DetailRow label="Name" value={dentist.name} />
-        <DetailRow label="Specialization" value={dentist.specialization} />
-        <DetailRow label="Gender" value={dentist.gender} />
+        <DetailRow
+          label="Name"
+          value={dentist.name}
+        />
+
+        <DetailRow
+          label="Specialization"
+          value={dentist.specialization}
+        />
+
+        <DetailRow
+          label="Gender"
+          value={dentist.gender}
+        />
       </View>
 
+      {/* Contact Information */}
       {(dentist.phone || dentist.email) && (
         <>
-          <AppText style={[styles.title, { marginTop: 24, marginBottom: 12 }]}>
+          <AppText
+            style={[
+              styles.title,
+              {
+                marginTop: 24,
+                marginBottom: 12,
+              },
+            ]}
+          >
             Contact Information
           </AppText>
+
           <View
             style={{
               padding: 16,
@@ -181,17 +317,34 @@ export default function DentistDetailsScreen() {
               gap: 14,
             }}
           >
-            <DetailRow label="Phone" value={dentist.phone} />
-            <DetailRow label="Email" value={dentist.email} />
+            <DetailRow
+              label="Phone"
+              value={dentist.phone}
+            />
+
+            <DetailRow
+              label="Email"
+              value={dentist.email}
+            />
           </View>
         </>
       )}
 
-      <AppText style={[styles.title, { marginTop: 24, marginBottom: 12 }]}>
+      {/* Associated Clinics */}
+      <AppText
+        style={[
+          styles.title,
+          {
+            marginTop: 24,
+            marginBottom: 12,
+          },
+        ]}
+      >
         Associated Clinics
       </AppText>
-      {dentist.clinics.length > 0 ? (
-        dentist.clinics.map((clinic) => (
+
+      {clinics.length > 0 ? (
+        clinics.map((clinic) => (
           <View
             key={clinic.id}
             style={{
@@ -204,14 +357,28 @@ export default function DentistDetailsScreen() {
               gap: 6,
             }}
           >
-            <AppText style={{ fontWeight: '700' }}>{clinic.name}</AppText>
-            <AppText style={{ color: colors.textMuted }}>
-              {[clinic.address, clinic.city, clinic.state, clinic.postal_code]
+            <AppText style={{ fontWeight: '700' }}>
+              {clinic.name}
+            </AppText>
+
+            <AppText
+              style={{ color: colors.textMuted }}
+            >
+              {[
+                clinic.address,
+                clinic.city,
+                clinic.state,
+                clinic.postal_code,
+              ]
                 .filter(Boolean)
                 .join(', ') || 'Clinic address not listed'}
             </AppText>
+
             {clinic.phone ? (
-              <DetailRow label="Clinic phone" value={clinic.phone} />
+              <DetailRow
+                label="Clinic phone"
+                value={clinic.phone}
+              />
             ) : null}
           </View>
         ))
@@ -221,6 +388,7 @@ export default function DentistDetailsScreen() {
         </AppText>
       )}
 
+      {/* Booking Information */}
       <AppText
         style={{
           marginTop: 12,
@@ -228,21 +396,27 @@ export default function DentistDetailsScreen() {
           lineHeight: 20,
         }}
       >
-        Clinic schedules, available services, fees and appointment slots
-        will be shown when the corresponding booking data is connected.
+        Clinic schedules, available services, fees and appointment
+        slots will be shown when the corresponding booking data is
+        connected.
       </AppText>
 
+      {/* Appointment Availability */}
       <Pressable
-        onPress={() => {
-          router.push({
-            pathname: '/booking/availability',
-            params: { dentistId: String(dentist.id) },
-          });
-        }}
+        onPress={handleCheckAvailability}
+        disabled={authLoading}
         accessibilityRole="button"
-        style={[styles.button, { marginTop: 24 }]}
+        style={[
+          styles.button,
+          {
+            marginTop: 24,
+            opacity: authLoading ? 0.6 : 1,
+          },
+        ]}
       >
-        <AppText style={styles.buttonText}>Check Appointment Availability</AppText>
+        <AppText style={styles.buttonText}>
+          Check Appointment Availability
+        </AppText>
       </Pressable>
     </ScrollView>
   );
@@ -256,11 +430,22 @@ function DetailRow({
   value: string | null | undefined;
 }) {
   const colors = useAppColors();
-  if (!value) return null;
+
+  if (!value) {
+    return null;
+  }
 
   return (
     <View style={{ gap: 4 }}>
-      <AppText style={{ fontSize: 12, color: colors.textMuted }}>{label}</AppText>
+      <AppText
+        style={{
+          fontSize: 12,
+          color: colors.textMuted,
+        }}
+      >
+        {label}
+      </AppText>
+
       <AppText>{value}</AppText>
     </View>
   );

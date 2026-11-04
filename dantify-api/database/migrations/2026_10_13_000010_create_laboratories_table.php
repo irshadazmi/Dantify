@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('postal_code', 20)->nullable();
             $table->string('phone',20)->nullable();
             $table->string('email',100)->nullable();
+            $table->string('profile_photo_path', 255)->nullable();
             $table->string('registration_number')->nullable()->unique();
             $table->text('notes')->nullable();
             $table->boolean('is_active')->default(true);

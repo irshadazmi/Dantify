@@ -44,7 +44,15 @@ export const TAB_ITEMS = [
     roles: [ROLES.CLINIC, ROLES.DENTIST],
   },
   {
-    name: '/services',
+    name: '/clinic-services',
+    title: 'Our Services',
+    icon: 'dentistry',
+    roles: [
+      ROLES.CLINIC,
+    ],
+  },
+  {
+    name: '/dental-services',
     title: 'Services',
     icon: 'dentistry',
     roles: [
@@ -52,12 +60,16 @@ export const TAB_ITEMS = [
     ],
   },
   {
-    name: '/dental-services',
-    title: 'Our Services',
-    icon: 'dentistry',
-    roles: [
-      ROLES.CLINIC,
-    ],
+    name: '/profiles/clinic',
+    title: 'Our Profile',
+    icon: 'person.crop.circle.fill',
+    roles: [ROLES.CLINIC],
+  },
+  {
+    name: '/profiles/dentist',
+    title: 'My Profile',
+    icon: 'person.crop.circle.fill',
+    roles: [ROLES.DENTIST],
   },
   {
     name: '/associations',

@@ -121,7 +121,7 @@ export default function CreateServiceScreen() {
         [
           {
             text: 'OK',
-            onPress: () => router.replace('/services'),
+            onPress: () => router.replace('/dental-services'),
           },
         ],
       );

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   View,
@@ -406,12 +407,25 @@ export default function SearchResultsScreen() {
                       width: 58,
                       height: 58,
                       borderRadius: 15,
+                      overflow: 'hidden',
                       backgroundColor: colors.background,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <IconSymbol name="person.fill" size={27} color={colors.primary} />
+                    {dentist.profile_photo_url ? (
+                      <Image
+                        source={{ uri: dentist.profile_photo_url }}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <IconSymbol
+                        name="person.fill"
+                        size={27}
+                        color={colors.primary}
+                      />
+                    )}
                   </View>
                   <View style={{ flex: 1 }}>
                     <AppText style={{ fontWeight: '700', fontSize: 16 }}>

@@ -11,9 +11,13 @@ import Constants from 'expo-constants';
    Expected value ends with /api
 ====================================================== */
 
+// const API_BASE_URL: string =
+//   Constants.expoConfig?.extra?.API_BASE_URL ??
+//   'http://192.168.29.62/api';
+
 const API_BASE_URL: string =
   Constants.expoConfig?.extra?.API_BASE_URL ??
-  'http://192.168.29.62/api';
+  'https://dantify.oolasystems.com/api';
 
 /* ======================================================
    TOKEN PROVIDER

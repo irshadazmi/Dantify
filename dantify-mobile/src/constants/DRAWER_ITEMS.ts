@@ -32,7 +32,15 @@ export const DRAWER_ITEMS = [
     roles: [ROLES.SUPER_ADMIN, ROLES.CLINIC, ROLES.STAFF],
   },
   {
-    name: '/services',
+    name: '/clinic-services',
+    title: 'Our Services',
+    icon: 'dentistry',
+    roles: [
+      ROLES.CLINIC,
+    ],
+  },
+  {
+    name: '/dental-services',
     title: 'Services',
     icon: 'dentistry',
     roles: [
@@ -40,12 +48,16 @@ export const DRAWER_ITEMS = [
     ],
   },
   {
-    name: '/dental-services',
-    title: 'Our Services',
-    icon: 'dentistry',
-    roles: [
-      ROLES.CLINIC,
-    ],
+    name: '/profiles/clinic',
+    title: 'Our Profile',
+    icon: 'person.crop.circle.fill',
+    roles: [ROLES.CLINIC],
+  },
+  {
+    name: '/profiles/dentist',
+    title: 'My Profile',
+    icon: 'person.crop.circle.fill',
+    roles: [ROLES.DENTIST],
   },
   {
     name: '/associations',

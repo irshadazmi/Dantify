@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('postal_code', 20)->nullable();
             $table->string('phone',20)->nullable();
             $table->string('email',100)->nullable();
+            $table->string('profile_photo_path', 255)->nullable();
             $table->string('specialization',255);
             $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
             $table->timestamps();

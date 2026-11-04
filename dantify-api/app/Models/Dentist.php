@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasProfilePhoto;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Dentist extends Model
 {
+    use HasProfilePhoto;
+
+    protected $appends = [
+        'profile_photo_url',
+    ];
+    
     protected $fillable = [
         'name',
         'gender',
@@ -19,6 +26,7 @@ class Dentist extends Model
         'postal_code',
         'phone',
         'email',
+        'profile_photo_path',
         'specialization',
         'user_id',
     ];

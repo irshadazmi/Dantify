@@ -1,19 +1,52 @@
+import type {
+  ApiResponse,
+  PaginatedApiResponse,
+} from './api';
+
+/* ======================================================
+   ENUMS / UNION TYPES
+====================================================== */
 
 export type AssociationScheduleStatus =
-  | "proposed"
-  | "confirmed"
-  | "change_requested"
-  | "cancelled"
-  | "superseded";
+  | 'proposed'
+  | 'approved'
+  | 'confirmed'
+  | 'change_requested'
+  | 'cancelled'
+  | 'superseded';
 
 export type DayOfWeek =
-  | "Monday"
-  | "Tuesday"
-  | "Wednesday"
-  | "Thursday"
-  | "Friday"
-  | "Saturday"
-  | "Sunday";
+  | 'Monday'
+  | 'Tuesday'
+  | 'Wednesday'
+  | 'Thursday'
+  | 'Friday'
+  | 'Saturday'
+  | 'Sunday';
+
+export type AssociationScheduleReviewResponse =
+  | 'confirm'
+  | 'request_changes';
+
+/* ======================================================
+   RELATED TYPES
+====================================================== */
+
+export interface AssociationScheduleUser {
+  id: number;
+  name: string;
+}
+
+export interface AssociationSummary {
+  id: number;
+  clinic_id: number;
+  dentist_id: number;
+  status: string;
+}
+
+/* ======================================================
+   ASSOCIATION SCHEDULE SLOT
+====================================================== */
 
 export interface AssociationScheduleSlot {
   id: number;
@@ -27,6 +60,10 @@ export interface AssociationScheduleSlot {
   updated_at?: string;
 }
 
+/* ======================================================
+   ASSOCIATION SCHEDULE
+====================================================== */
+
 export interface AssociationSchedule {
   id: number;
   clinic_dentist_invite_id: number;
@@ -39,16 +76,16 @@ export interface AssociationSchedule {
   reviewed_at: string | null;
   created_at: string;
   updated_at: string;
+
   slots: AssociationScheduleSlot[];
-  proposed_by?: {
-    id: number;
-    name: string;
-  };
-  reviewed_by?: {
-    id: number;
-    name: string;
-  } | null;
+
+  proposed_by?: AssociationScheduleUser;
+  reviewed_by?: AssociationScheduleUser | null;
 }
+
+/* ======================================================
+   CREATE / UPDATE PAYLOADS
+====================================================== */
 
 export interface ScheduleSlotPayload {
   day_of_week: DayOfWeek;
@@ -63,28 +100,14 @@ export interface CreateAssociationSchedulePayload {
   slots: ScheduleSlotPayload[];
 }
 
-export type AssociationScheduleReviewResponse =
-  | "confirm"
-  | "request_changes";
+/* ======================================================
+   API RESPONSE TYPES
+====================================================== */
 
-export interface AssociationScheduleListResponse {
-  message: string;
-  association?: {
-    id: number;
-    clinic_id: number;
-    dentist_id: number;
-    status: string;
-  };
-  data: {
-    current_page: number;
-    data: AssociationSchedule[];
-    last_page: number;
-    per_page: number;
-    total: number;
-  };
-}
+export type AssociationScheduleApiResponse =
+  ApiResponse<AssociationSchedule>;
 
-export interface AssociationScheduleApiResponse {
-  message: string;
-  data: AssociationSchedule;
-}
+export type AssociationScheduleListResponse =
+  PaginatedApiResponse<AssociationSchedule> & {
+    association?: AssociationSummary;
+  };

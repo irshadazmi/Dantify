@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -8,10 +8,7 @@ import {
   Switch,
   View,
 } from 'react-native';
-import {
-  useLocalSearchParams,
-  useRouter,
-} from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AppText } from '@/components/ui/app-text';
 import { AppInput } from '@/components/ui/app-input';
@@ -22,11 +19,11 @@ import { useStyles } from '@/styles/styles';
 import { useAppColors } from '@/hooks/use-app-colors';
 
 import {
-  getService,
-  updateService,
-} from '@/services/dental-service';
+  getDentalService,
+  updateDentalService,
+} from '@/services/dental-service-service';
 
-import type { Service } from '@/types/service';
+import type { UpdateDentalServicePayload } from '@/types/dental-service';
 
 function getErrorMessage(error: unknown): string {
   const err = error as {
@@ -53,26 +50,12 @@ function getErrorMessage(error: unknown): string {
   );
 }
 
-function formatPrice(value: string | number | null | undefined) {
-  if (value === null || value === undefined || value === '') {
-    return 'Not set';
-  }
-
-  const number = Number(value);
-
-  return Number.isFinite(number)
-    ? `₹${number.toFixed(2)}`
-    : 'Not set';
-}
-
-export default function EditServiceScreen() {
+export default function EditDentalServiceScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+
   const styles = useStyles();
   const colors = useAppColors();
-
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const serviceId = Number(id);
-
   const { user, isLoading: authLoading } = useAuth();
 
   const roleName =
@@ -81,64 +64,74 @@ export default function EditServiceScreen() {
       : user?.role?.name;
 
   const isSuperAdmin = roleName === 'superadmin';
-
-  const [service, setService] = useState<Service | null>(null);
+  const serviceId = Number(id);
+  const validId = Number.isInteger(serviceId) && serviceId > 0;
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [duration, setDuration] = useState('');
+  const [duration, setDuration] = useState('30');
   const [isActive, setIsActive] = useState(true);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const loadService = useCallback(async () => {
-    if (!Number.isInteger(serviceId) || serviceId <= 0) {
-      setError('Invalid service ID.');
+  useEffect(() => {
+    if (authLoading || !isSuperAdmin || !validId) {
       setLoading(false);
       return;
     }
 
-    try {
-      setLoading(true);
-      setError(null);
+    let mounted = true;
 
-      const result = await getService(serviceId);
+    const loadService = async () => {
+      try {
+        setLoading(true);
 
-      setService(result);
-      setName(result.name);
-      setDescription(result.description ?? '');
-      setPrice(String(result.price ?? ''));
-      setDuration(String(result.duration_minutes ?? ''));
-      setIsActive(Boolean(result.is_active));
-    } catch (err) {
-      setService(null);
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [serviceId]);
+        const service = await getDentalService(serviceId);
 
-  useEffect(() => {
-    if (!authLoading && isSuperAdmin) {
-      void loadService();
-    }
-  }, [authLoading, isSuperAdmin, loadService]);
+        if (!mounted) return;
+
+        setName(service.name ?? '');
+        setDescription(service.description ?? '');
+        setPrice(String(service.price ?? ''));
+        setDuration(String(service.duration_minutes ?? 30));
+        setIsActive(service.is_active);
+      } catch (error) {
+        if (mounted) {
+          Alert.alert(
+            'Unable to load service',
+            getErrorMessage(error),
+            [
+              {
+                text: 'OK',
+                onPress: () =>
+                  router.replace('/dental-services'),
+              },
+            ],
+          );
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    void loadService();
+
+    return () => {
+      mounted = false;
+    };
+  }, [authLoading, isSuperAdmin, validId, serviceId, router]);
 
   const handleSave = async () => {
-    if (!service || saving) return;
+    if (saving) return;
 
     const serviceName = name.trim();
     const numericPrice = Number(price);
     const numericDuration = Number(duration);
 
     if (!serviceName) {
-      Alert.alert(
-        'Service name required',
-        'Please enter a service name.',
-      );
+      Alert.alert('Service name required', 'Please enter a service name.');
       return;
     }
 
@@ -147,10 +140,7 @@ export default function EditServiceScreen() {
       !Number.isFinite(numericPrice) ||
       numericPrice < 0
     ) {
-      Alert.alert(
-        'Invalid price',
-        'Please enter a valid default price.',
-      );
+      Alert.alert('Invalid price', 'Please enter a valid default price.');
       return;
     }
 
@@ -166,16 +156,18 @@ export default function EditServiceScreen() {
       return;
     }
 
+    const payload: UpdateDentalServicePayload = {
+      name: serviceName,
+      description: description.trim() || null,
+      price: numericPrice,
+      duration_minutes: numericDuration,
+      is_active: isActive,
+    };
+
     try {
       setSaving(true);
 
-      await updateService(service.id, {
-        name: serviceName,
-        description: description.trim() || null,
-        price: numericPrice,
-        duration_minutes: numericDuration,
-        is_active: isActive,
-      });
+      await updateDentalService(serviceId, payload);
 
       Alert.alert(
         'Service updated',
@@ -183,21 +175,21 @@ export default function EditServiceScreen() {
         [
           {
             text: 'OK',
-            onPress: () => router.replace('/services'),
+            onPress: () =>
+              router.replace(
+                `/dental-services/${serviceId}`,
+              ),
           },
         ],
       );
-    } catch (err) {
-      Alert.alert(
-        'Unable to update service',
-        getErrorMessage(err),
-      );
+    } catch (error) {
+      Alert.alert('Unable to update service', getErrorMessage(error));
     } finally {
       setSaving(false);
     }
   };
 
-  if (authLoading) {
+  if (authLoading || loading) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -208,74 +200,28 @@ export default function EditServiceScreen() {
   if (!isSuperAdmin) {
     return (
       <View style={styles.container}>
-        <AppText variant="title">
-          Access restricted
-        </AppText>
-
+        <AppText variant="title">Access restricted</AppText>
         <AppText variant="muted">
-          Only Super Admin can edit common catalogue services.
+          Only Super Admin can manage the common service catalogue.
         </AppText>
       </View>
     );
   }
 
-  if (loading) {
+  if (!validId) {
     return (
       <View style={styles.container}>
-        <View style={styles.emptyState}>
-          <ActivityIndicator
-            size="large"
-            color={colors.primary}
-          />
-
-          <AppText variant="muted">
-            Loading service...
+        <AppText variant="title">Invalid service ID</AppText>
+        <Pressable
+          onPress={() =>
+            router.replace('/(superadmin)/dental-services')
+          }
+          style={[styles.actionButton, styles.editButton]}
+        >
+          <AppText style={styles.actionButtonText}>
+            Back to Services
           </AppText>
-        </View>
-      </View>
-    );
-  }
-
-  if (!service) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.emptyState}>
-          <AppText variant="title">
-            Unable to load service
-          </AppText>
-
-          <AppText variant="error">
-            {error ?? 'Service not found.'}
-          </AppText>
-
-          <View style={styles.actionsRow}>
-            <Pressable
-              onPress={() => void loadService()}
-              accessibilityRole="button"
-              style={[
-                styles.actionButton,
-                styles.replyButton,
-              ]}
-            >
-              <AppText style={styles.actionButtonText}>
-                Retry
-              </AppText>
-            </Pressable>
-
-            <Pressable
-              onPress={() => router.back()}
-              accessibilityRole="button"
-              style={[
-                styles.actionButton,
-                styles.editButton,
-              ]}
-            >
-              <AppText style={styles.actionButtonText}>
-                Go Back
-              </AppText>
-            </Pressable>
-          </View>
-        </View>
+        </Pressable>
       </View>
     );
   }
@@ -286,61 +232,33 @@ export default function EditServiceScreen() {
         contentContainerStyle={styles.contentContainer}
         keyboardShouldPersistTaps="handled"
       >
-        <AppText variant="title">
-          Edit Common Service
-        </AppText>
+        <AppText variant="title">Edit Common Service</AppText>
 
         <AppText variant="muted">
-          Update the master service details and catalogue defaults.
+          Update the master dental catalogue. Clinics may configure
+          their own prices and durations separately.
         </AppText>
 
         <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <AppText style={styles.cardTitle}>
-              {service.name}
-            </AppText>
+          <AppText style={styles.cardTitle}>Service Information</AppText>
 
-            <StatusBadge
-              label={isActive ? 'Active' : 'Inactive'}
-              variant={isActive ? 'success' : 'danger'}
-            />
-          </View>
-
-          <AppText variant="muted">
-            Current default price: {formatPrice(service.price)}
-            {' · '}
-            {service.duration_minutes} minutes
-          </AppText>
-        </View>
-
-        <View style={styles.card}>
-          <AppText style={styles.cardTitle}>
-            Service Information
-          </AppText>
-
-          <AppText style={styles.sectionLabel}>
-            Service Name *
-          </AppText>
-
+          <AppText style={styles.sectionLabel}>Service Name *</AppText>
           <AppInput
             style={styles.textInput}
             value={name}
             onChangeText={setName}
-            placeholder="Service name"
+            placeholder="e.g. Root Canal Treatment"
             autoCapitalize="words"
             maxLength={150}
             editable={!saving}
           />
 
-          <AppText style={styles.sectionLabel}>
-            Description
-          </AppText>
-
+          <AppText style={styles.sectionLabel}>Description</AppText>
           <AppInput
             style={styles.textInput}
             value={description}
             onChangeText={setDescription}
-            placeholder="Service description"
+            placeholder="Briefly describe the dental service"
             multiline
             numberOfLines={3}
             textAlignVertical="top"
@@ -354,8 +272,7 @@ export default function EditServiceScreen() {
           </AppText>
 
           <AppText variant="muted">
-            These defaults apply to the common catalogue.
-            Existing clinic-specific values remain independent.
+            These are catalogue defaults. Clinics may use different values.
           </AppText>
 
           <View style={styles.phoneRow}>
@@ -363,7 +280,6 @@ export default function EditServiceScreen() {
               <AppText style={styles.sectionLabel}>
                 Default Price (₹) *
               </AppText>
-
               <AppInput
                 style={styles.textInput}
                 value={price}
@@ -378,7 +294,6 @@ export default function EditServiceScreen() {
               <AppText style={styles.sectionLabel}>
                 Duration (min) *
               </AppText>
-
               <AppInput
                 style={styles.textInput}
                 value={duration}
@@ -393,10 +308,7 @@ export default function EditServiceScreen() {
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <AppText style={styles.cardTitle}>
-              Catalogue Availability
-            </AppText>
-
+            <AppText style={styles.cardTitle}>Availability</AppText>
             <StatusBadge
               label={isActive ? 'Active' : 'Inactive'}
               variant={isActive ? 'success' : 'danger'}
@@ -407,7 +319,6 @@ export default function EditServiceScreen() {
             <AppText variant="body">
               Active in Common Catalogue
             </AppText>
-
             <Switch
               value={isActive}
               onValueChange={setIsActive}
@@ -421,9 +332,7 @@ export default function EditServiceScreen() {
           </View>
 
           <AppText variant="muted">
-            Deactivating a common service prevents new clinic
-            additions. It does not automatically deactivate
-            existing clinic offerings.
+            Inactive services are not available for new clinic additions.
           </AppText>
         </View>
 
@@ -432,7 +341,6 @@ export default function EditServiceScreen() {
             onPress={() => void handleSave()}
             disabled={saving}
             accessibilityRole="button"
-            accessibilityLabel="Save common service changes"
             style={[
               styles.actionButton,
               styles.replyButton,
@@ -458,9 +366,7 @@ export default function EditServiceScreen() {
               saving && styles.disabledButton,
             ]}
           >
-            <AppText style={styles.actionButtonText}>
-              Cancel
-            </AppText>
+            <AppText style={styles.actionButtonText}>Cancel</AppText>
           </Pressable>
         </View>
       </ScrollView>

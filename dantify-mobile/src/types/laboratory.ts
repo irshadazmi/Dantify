@@ -1,24 +1,26 @@
+import type { Address } from './address';
+import type {
+  ApiResponse,
+  PaginatedApiResponse,
+} from './api';
 
 /* ======================================================
-   LABORATORY TYPES – aligned with Laravel Laboratory model
+   LABORATORY
 ====================================================== */
 
-import type { Address } from './address';
-
-/**
- * Full Laboratory entity returned by the Laravel API.
- */
 export interface Laboratory extends Address {
   id: number;
   user_id: number;
   name: string;
   contact_person: string | null;
-  email: string | null;
   phone: string | null;
+  email: string | null;
+  profile_photo_path?: string | null;
+  profile_photo_url: string | null;
   registration_number: string | null;
   notes: string | null;
   is_active: boolean;
-  created_at?: string;
+  created_at: string;
   updated_at: string | null;
 }
 
@@ -26,10 +28,12 @@ export interface Laboratory extends Address {
    CREATE / UPDATE PAYLOADS
 ====================================================== */
 
-/**
- * Payload for POST /api/laboratories.
- * user_id is assigned by the authenticated backend user.
- */
+export interface ProfilePhotoPayload {
+  uri: string;
+  name: string;
+  type: string;
+}
+
 export interface LaboratoryCreatePayload extends Address {
   name: string;
   contact_person?: string | null;
@@ -38,6 +42,7 @@ export interface LaboratoryCreatePayload extends Address {
   registration_number?: string | null;
   notes?: string | null;
   is_active?: boolean;
+  profile_photo?: ProfilePhotoPayload | null;
 }
 
 /**
@@ -52,34 +57,18 @@ export interface LaboratoryUpdatePayload extends Partial<Address> {
   registration_number?: string | null;
   notes?: string | null;
   is_active?: boolean;
+  profile_photo?: ProfilePhotoPayload | null;
+  remove_profile_photo?: boolean;
 }
 
 /* ======================================================
-   API RESPONSE TYPES
+   LABORATORY PROFILE RESPONSES
 ====================================================== */
 
-/**
- * GET /api/my/laboratory-profile
- *
- * Existing profile:
- * { next_step: 'dashboard', data: Laboratory }
- *
- * Missing profile:
- * { next_step: 'create_profile', data: null }
- */
-export interface MyLaboratoryProfileResponse {
-  message?: string;
+export interface MyLaboratoryProfileResponse
+  extends ApiResponse<Laboratory | null> {
   next_step: 'create_profile' | 'dashboard';
-  data: Laboratory | null;
 }
 
-/**
- * Standard paginated Laravel response.
- */
-export interface PaginatedLaboratoriesResponse {
-  data: Laboratory[];
-  current_page: number;
-  last_page: number;
-  per_page: number;
-  total: number;
-}
+export type PaginatedLaboratoriesResponse =
+  PaginatedApiResponse<Laboratory>;

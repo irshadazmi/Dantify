@@ -63,7 +63,7 @@ class Clinic extends Model
 
     public function appointments(): HasMany
     {
-        return $this->hasMany(Appointment::class);
+        return $this->hasMany(Booking::class);
     }
 
     public function treatmentPlans(): HasMany
@@ -96,20 +96,28 @@ class Clinic extends Model
         return $this->hasMany(PatientFeedback::class);
     }
 
-    public function clinicServices(): HasMany
+    public function serviceOfferings(): HasMany
     {
-        return $this->hasMany(ClinicService::class);
+        return $this->hasMany(
+            ClinicServiceOffering::class,
+            'clinic_id'
+        );
     }
 
-    public function services(): BelongsToMany
+    public function dentalServices(): BelongsToMany
     {
         return $this->belongsToMany(
-            Service::class,
-            'clinic_services',
+            DentalService::class,
+            'clinic_service_offerings',
             'clinic_id',
-            'service_id'
+            'dental_service_id'
         )
-            ->withPivot(['id', 'price', 'duration_minutes', 'is_active'])
+            ->withPivot([
+                'id',
+                'price',
+                'duration_minutes',
+                'is_active',
+            ])
             ->withTimestamps();
     }
 

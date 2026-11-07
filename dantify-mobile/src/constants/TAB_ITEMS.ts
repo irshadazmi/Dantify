@@ -44,20 +44,24 @@ export const TAB_ITEMS = [
     roles: [ROLES.CLINIC, ROLES.DENTIST],
   },
   {
-    name: '/clinic-services',
-    title: 'Our Services',
-    icon: 'dentistry',
-    roles: [
-      ROLES.CLINIC,
-    ],
-  },
-  {
     name: '/dental-services',
     title: 'Services',
     icon: 'dentistry',
     roles: [
       ROLES.SUPER_ADMIN,
     ],
+  },
+  {
+    name: '/medicines',
+    title: 'Medicines',
+    icon: 'pills.fill',
+    roles: [ROLES.SUPER_ADMIN],
+  },
+  {
+    name: '/dental-advices',
+    title: 'Dental Advice',
+    icon: 'list.clipboard.fill',
+    roles: [ROLES.SUPER_ADMIN],
   },
   {
     name: '/profiles/clinic',
@@ -70,6 +74,24 @@ export const TAB_ITEMS = [
     title: 'My Profile',
     icon: 'person.crop.circle.fill',
     roles: [ROLES.DENTIST],
+  },
+  {
+    name: '/profiles/staff',
+    title: 'My Profile',
+    icon: 'person.crop.circle.fill',
+    roles: [ROLES.STAFF],
+  },
+  {
+    name: '/profiles/laboratory',
+    title: 'Our Profile',
+    icon: 'person.crop.circle.fill',
+    roles: [ROLES.LABORATORY],
+  },
+  {
+    name: '/profiles/patient',
+    title: 'My Profile',
+    icon: 'person.crop.circle.fill',
+    roles: [ROLES.PATIENT],
   },
   {
     name: '/associations',

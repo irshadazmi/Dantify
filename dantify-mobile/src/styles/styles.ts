@@ -16,6 +16,29 @@ export const useStyles = () => {
 
   return StyleSheet.create({
     /* ========== LAYOUT ========== */
+    root: {
+      flex: 1,
+    },
+
+    safeArea: {
+      flex: 1,
+      backgroundColor: SURFACE_SOFT,
+    },
+
+    appContainer: {
+      flex: 1,
+    },
+
+    content: {
+      flex: 1,
+    },
+
+    center: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
     container: {
       flex: 1,
       padding: 10,
@@ -286,21 +309,41 @@ export const useStyles = () => {
 
     /* ========== SCREEN HEADER ========== */
     screenHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 12,
-      gap: 10,
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      marginBottom: 14,
+      gap: 6,
     },
     screenHeaderContent: {
       flex: 1,
       minWidth: 0,
     },
     screenHeaderTitleRow: {
+      width: '100%',
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      justifyContent: 'space-between',
+      gap: 10,
     },
+    screenHeaderBackButton: {
+      minHeight: 34,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderWidth: 1,
+      borderColor: COLORS.primary,
+      borderRadius: 8,
+      backgroundColor: COLORS.card,
+      flexShrink: 0,
+    },
+    screenHeaderBackText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: COLORS.primary,
+    },
+
     serviceDetails: {
       flexDirection: 'row',
       gap: 28,
@@ -610,6 +653,492 @@ export const useStyles = () => {
     },
 
 
+    /* ========== BOOKING REVIEW ========== */
+
+    bookingReviewScrollContent: {
+      paddingBottom: 32,
+    },
+
+    bookingReviewCentered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+    },
+
+    bookingReviewCard: {
+      backgroundColor: SURFACE,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      borderRadius: 12,
+      padding: 16,
+      marginTop: 18,
+    },
+
+    bookingReviewSectionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: COLORS.text,
+      marginBottom: 12,
+    },
+
+    bookingReviewDetailRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      paddingVertical: 11,
+      gap: 16,
+    },
+
+    bookingReviewDetailRowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: COLORS.border,
+    },
+
+    bookingReviewDetailLabel: {
+      flex: 0.8,
+      fontSize: 13,
+      color: COLORS.textMuted,
+    },
+
+    bookingReviewDetailValue: {
+      flex: 1.2,
+      fontSize: 13,
+      fontWeight: '600',
+      color: COLORS.text,
+      textAlign: 'right',
+    },
+
+    bookingReviewServiceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      gap: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: COLORS.border,
+    },
+
+    bookingReviewServiceInfo: {
+      flex: 1,
+    },
+
+    bookingReviewServiceName: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: COLORS.text,
+    },
+
+    bookingReviewServiceMeta: {
+      fontSize: 12,
+      color: COLORS.textMuted,
+      marginTop: 5,
+    },
+
+    bookingReviewServicePrice: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: COLORS.text,
+    },
+
+    bookingReviewTotalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderTopWidth: 1,
+      borderTopColor: COLORS.border,
+      marginTop: 8,
+      paddingTop: 14,
+    },
+
+    bookingReviewTotalLabel: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: COLORS.text,
+    },
+
+    bookingReviewTotalAmount: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: COLORS.primary,
+    },
+
+    bookingReviewDisclaimer: {
+      fontSize: 11,
+      color: COLORS.textMuted,
+      marginTop: 10,
+      lineHeight: 16,
+    },
+
+    bookingReviewNotes: {
+      fontSize: 14,
+      color: COLORS.text,
+      lineHeight: 21,
+    },
+
+    bookingReviewNotice: {
+      backgroundColor: SURFACE_SOFT,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      borderRadius: 10,
+      padding: 13,
+      marginTop: 18,
+    },
+
+    bookingReviewNoticeText: {
+      fontSize: 13,
+      color: COLORS.text,
+      lineHeight: 19,
+    },
+
+    bookingReviewPrimaryButton: {
+      minHeight: 50,
+      borderRadius: 9,
+      backgroundColor: COLORS.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 18,
+      marginTop: 22,
+    },
+
+    bookingReviewPrimaryButtonText: {
+      color: COLORS.badgeText,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+
+    bookingReviewButtonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+    },
+
+    bookingReviewBackButton: {
+      alignItems: 'center',
+      paddingVertical: 16,
+    },
+
+    bookingReviewBackButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: COLORS.primary,
+    },
+
+
+    /* ========== BOOKING AUTHENTICATION ========== */
+
+    bookingAuthScrollContent: {
+      flexGrow: 1,
+      paddingBottom: 28,
+    },
+
+    bookingAuthCentered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+    },
+
+    bookingAuthHeader: {
+      alignItems: 'center',
+      paddingTop: 28,
+      paddingBottom: 20,
+    },
+
+    bookingAuthBrand: {
+      fontSize: 26,
+      fontWeight: '800',
+      color: COLORS.primary,
+      marginBottom: 20,
+    },
+
+    bookingAuthCard: {
+      backgroundColor: SURFACE,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      borderRadius: 12,
+      padding: 18,
+      marginTop: 16,
+    },
+
+    bookingAuthCardTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: COLORS.text,
+      marginBottom: 8,
+    },
+
+    bookingAuthSecondaryButton: {
+      minHeight: 48,
+      borderWidth: 1.5,
+      borderColor: COLORS.primary,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 18,
+      marginTop: 18,
+    },
+
+    bookingAuthSecondaryButtonText: {
+      color: COLORS.primary,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+
+    bookingAuthNotice: {
+      backgroundColor: SURFACE_SOFT,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      borderRadius: 10,
+      padding: 14,
+      marginTop: 20,
+    },
+
+    bookingAuthNoticeText: {
+      color: COLORS.textMuted,
+      fontSize: 13,
+      lineHeight: 19,
+    },
+
+    bookingAuthBackButton: {
+      alignItems: 'center',
+      paddingVertical: 18,
+      marginTop: 4,
+    },
+
+    bookingAuthBackButtonText: {
+      color: COLORS.primary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+
+    /* ========== BOOKING CONFIRMATION ========== */
+
+    confirmationContent: {
+      paddingHorizontal: 12,
+      paddingTop: 20,
+      paddingBottom: 40,
+    },
+
+    confirmationCenter: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+    },
+
+    confirmationLoadingText: {
+      marginTop: 14,
+      fontSize: 14,
+      color: COLORS.textSecondary,
+    },
+
+    confirmationHero: {
+      alignItems: 'center',
+      paddingVertical: 20,
+      marginBottom: 12,
+    },
+
+    confirmationSuccessIcon: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
+      backgroundColor: COLORS.success,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 18,
+    },
+
+    confirmationSuccessIconText: {
+      fontSize: 42,
+      fontWeight: '700',
+      color: COLORS.badgeText,
+    },
+
+    confirmationTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: COLORS.text,
+      textAlign: 'center',
+      marginBottom: 8,
+    },
+
+    confirmationSubtitle: {
+      fontSize: 14,
+      color: COLORS.textSecondary,
+      textAlign: 'center',
+      lineHeight: 21,
+    },
+
+    confirmationReference: {
+      alignItems: 'center',
+      marginTop: 20,
+      marginBottom: 14,
+    },
+
+    confirmationReferenceLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 1,
+      color: COLORS.textMuted,
+      marginBottom: 5,
+    },
+
+    confirmationReferenceValue: {
+      fontSize: 23,
+      fontWeight: '800',
+      color: COLORS.primary,
+    },
+
+    confirmationCard: {
+      backgroundColor: SURFACE,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      padding: 16,
+      marginBottom: 14,
+    },
+
+    confirmationSectionTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: COLORS.text,
+      marginBottom: 14,
+    },
+
+    confirmationDetailRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: 14,
+      paddingVertical: 9,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: COLORS.border,
+    },
+
+    confirmationDetailLabel: {
+      flex: 1,
+      fontSize: 13,
+      color: COLORS.textMuted,
+    },
+
+    confirmationDetailValue: {
+      flex: 1.5,
+      fontSize: 13,
+      fontWeight: '600',
+      color: COLORS.text,
+      textAlign: 'right',
+    },
+
+    confirmationServiceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      paddingVertical: 11,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: COLORS.border,
+    },
+
+    confirmationServiceInfo: {
+      flex: 1,
+    },
+
+    confirmationServiceName: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: COLORS.text,
+    },
+
+    confirmationServiceQuantity: {
+      fontSize: 12,
+      color: COLORS.textMuted,
+      marginTop: 4,
+    },
+
+    confirmationServicePrice: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: COLORS.text,
+    },
+
+    confirmationTotalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingTop: 16,
+      marginTop: 4,
+    },
+
+    confirmationTotalLabel: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: COLORS.text,
+    },
+
+    confirmationTotalValue: {
+      fontSize: 19,
+      fontWeight: '800',
+      color: COLORS.primary,
+    },
+
+    confirmationEmptyText: {
+      fontSize: 13,
+      color: COLORS.textMuted,
+    },
+
+    confirmationNotes: {
+      fontSize: 14,
+      color: COLORS.textSecondary,
+      lineHeight: 21,
+    },
+
+    confirmationFooter: {
+      alignItems: 'center',
+      paddingTop: 8,
+    },
+
+    confirmationFooterText: {
+      fontSize: 13,
+      color: COLORS.textMuted,
+      textAlign: 'center',
+      lineHeight: 20,
+      marginBottom: 8,
+    },
+
+    confirmationErrorTitle: {
+      fontSize: 19,
+      fontWeight: '700',
+      color: COLORS.text,
+      textAlign: 'center',
+      marginBottom: 10,
+    },
+
+    confirmationErrorText: {
+      fontSize: 14,
+      color: COLORS.textSecondary,
+      textAlign: 'center',
+      lineHeight: 21,
+      marginBottom: 18,
+    },
+
+    confirmationSecondaryButton: {
+      minHeight: 46,
+      borderWidth: 1,
+      borderColor: COLORS.primary,
+      borderRadius: 8,
+      paddingHorizontal: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 8,
+    },
+
+    confirmationSecondaryButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: COLORS.primary,
+    },
+
     /* ========== UNIFIED STATUS BADGES ========== */
     statusPill: {
       alignSelf: 'flex-start',
@@ -828,6 +1357,116 @@ export const useStyles = () => {
       opacity: 0.7,
     },
 
+    /* ========== DENTIST PROFILE ========== */
+    profileScroll: {
+      flex: 1,
+      backgroundColor: SURFACE_SOFT,
+    },
+    profileScrollContent: {
+      padding: 16,
+      paddingBottom: 40,
+      flexGrow: 1,
+    },
+    profileLoading: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: SURFACE_SOFT,
+      gap: 12,
+    },
+    profileError: {
+      marginBottom: 14,
+    },
+    profileEmptyCard: {
+      padding: 20,
+      borderRadius: 16,
+      backgroundColor: SURFACE,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      alignItems: 'center',
+    },
+    profileEmptyIcon: {
+      fontSize: 42,
+      marginBottom: 12,
+    },
+    profileEmptyTitle: {
+      fontWeight: '700',
+      marginBottom: 8,
+      color: COLORS.text,
+    },
+    profileEmptyDescription: {
+      color: COLORS.textMuted,
+      textAlign: 'center',
+      marginBottom: 18,
+    },
+    profileCard: {
+      padding: 20,
+      borderRadius: 18,
+      backgroundColor: SURFACE,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+    },
+    profileAvatarSection: {
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    profileAvatar: {
+      width: 112,
+      height: 112,
+      borderRadius: 56,
+      overflow: 'hidden',
+      backgroundColor: SURFACE_SOFT,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    profileAvatarImage: {
+      width: 112,
+      height: 112,
+    },
+    profileAvatarPlaceholder: {
+      fontSize: 42,
+    },
+    profileName: {
+      marginTop: 12,
+      marginBottom: 0,
+      textAlign: 'center',
+    },
+    profileSpecialization: {
+      color: COLORS.textMuted,
+      textAlign: 'center',
+      marginTop: 4,
+    },
+    profileInfoList: {
+      gap: 14,
+    },
+    profileInfoItem: {
+      gap: 4,
+    },
+    profileInfoLabel: {
+      color: COLORS.textMuted,
+      fontSize: 12,
+    },
+    profileEditButton: {
+      marginTop: 24,
+    },
+    profileDeleteButton: {
+      marginTop: 12,
+      backgroundColor: COLORS.danger,
+    },
+    profileActionDisabled: {
+      opacity: 0.6,
+    },
+    profileFormScrollContent: {
+      padding: 10,
+      paddingBottom: 48,
+      flexGrow: 1,
+    },
+    profileFormError: {
+      marginBottom: 12,
+    },
+
     /* ========== DASHBOARD ========== */
     dashboardHeaderContainer: {
       padding: 10,
@@ -990,363 +1629,186 @@ export const useStyles = () => {
   });
 };
 
+export const ROOT_CONTAINER_STYLE = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+}).root;
 
 /**
- * Public patient landing page styles.
- * All colors come from the shared application theme; avoid screen-local
- * color literals so the public experience stays aligned with the rest
- * of the application in both light and dark modes.
+ * Public patient landing page.
+ * Uses the shared Dantify theme tokens for both light and dark mode.
  */
 export const usePublicLandingStyles = () => {
   const { resolvedMode } = useTheme();
   const COLORS = getColors(resolvedMode);
 
   return StyleSheet.create({
-    screen: {
-      flex: 1,
-      backgroundColor: COLORS.background,
-    },
-    scroll: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingHorizontal: 18,
-      paddingTop: 8,
-      paddingBottom: 18,
-    },
-    header: {
-      minHeight: 58,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 12,
-    },
-    brand: {
-      flexDirection: 'row',
-      alignItems: 'center',
+    screen: { flex: 1, backgroundColor: COLORS.background },
+    scroll: { flex: 1 },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 22 },
+
+    /* Brand header */
+    brandHeader: {
+      minHeight: 64,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
       gap: 10,
+      marginBottom: 13,
     },
-    brandLogo: {
-      width: 62,
-      height: 62,
-    },
-    brandName: {
-      color: COLORS.text,
-      fontSize: 23,
-      fontWeight: '800',
-      letterSpacing: -0.5,
-    },
-    heroRow: {
-      minHeight: 112,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 14,
-      gap: 4,
-    },
-    heroCopy: {
-      flex: 1,
-      minWidth: 0,
-      justifyContent: 'center',
-    },
-    heroArtwork: {
-      width: 132,
-      height: 112,
-      flexShrink: 0,
-      marginRight: -3,
-    },
-    heroTitle: {
-      color: COLORS.text,
-      fontSize: 25,
-      lineHeight: 30,
-      fontWeight: '800',
-      letterSpacing: -0.5,
-      marginBottom: 5,
-    },
-    heroSubtitle: {
-      color: COLORS.textSecondary,
-      fontSize: 14,
-      lineHeight: 20,
-    },
-    searchCard: {
-      backgroundColor: COLORS.surface,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-      borderRadius: 20,
-      padding: 15,
-    },
-    searchLabel: {
-      color: COLORS.text,
-      fontSize: 17,
-      fontWeight: '700',
-      marginBottom: 10,
-    },
-    searchInputRow: {
-      minHeight: 48,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-      backgroundColor: COLORS.card,
-      borderRadius: 14,
-      paddingHorizontal: 12,
-    },
-    searchInput: {
-      flex: 1,
-      minWidth: 0,
-      color: COLORS.text,
-      fontSize: 15,
-      paddingVertical: 10,
-    },
-    voiceButton: {
-      padding: 5,
-    },
-    searchDivider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: COLORS.divider,
-      marginVertical: 12,
-    },
-    locationRow: {
-      minHeight: 42,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      paddingHorizontal: 2,
-    },
-    locationText: {
-      flex: 1,
-      color: COLORS.textSecondary,
-      fontSize: 14,
-    },
-    searchButton: {
-      minHeight: 48,
-      borderRadius: 13,
-      backgroundColor: COLORS.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginTop: 10,
-      paddingHorizontal: 14,
-    },
-    searchButtonText: {
-      color: COLORS.badgeText,
-      fontSize: 15,
-      fontWeight: '700',
-      letterSpacing: 0.2,
-    },
-    section: {
-      paddingTop: 19,
-    },
-    sectionTitle: {
-      color: COLORS.text,
-      fontSize: 19,
-      fontWeight: '700',
-      letterSpacing: -0.2,
-    },
-    treatmentsRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginTop: 14,
-    },
-    treatmentItem: {
-      flex: 1,
-      alignItems: 'center',
+    brandBlock: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 9 },
+    brandLogo: { width: 48, height: 48, flexShrink: 0 },
+    brandCopy: { flex: 1, minWidth: 0, justifyContent: "center" },
+    brandName: { color: COLORS.text, fontSize: 23, lineHeight: 27, fontWeight: "800", letterSpacing: -0.5 },
+    brandTagline: { color: COLORS.textSecondary, fontSize: 11, lineHeight: 15 },
+    locationChip: {
+      maxWidth: "48%",
+      minHeight: 50,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
       gap: 7,
-      paddingVertical: 4,
-    },
-    treatmentIcon: {
-      width: 44,
-      height: 42,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    treatmentLabel: {
-      color: COLORS.textSecondary,
-      fontSize: 12,
-      fontWeight: '600',
-    },
-    exploreList: {
-      gap: 10,
-      marginTop: 13,
-    },
-    exploreCard: {
-      minHeight: 82,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      padding: 11,
-      borderRadius: 17,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 14,
       borderWidth: 1,
       borderColor: COLORS.border,
       backgroundColor: COLORS.surface,
     },
-    exploreIconBox: {
-      width: 52,
-      height: 52,
-      borderRadius: 14,
+    locationCopy: { flexShrink: 1, minWidth: 0, gap: 1 },
+    locationCaption: { color: COLORS.textMuted, fontSize: 10, lineHeight: 13 },
+    locationValue: { color: COLORS.text, fontSize: 13, lineHeight: 17, fontWeight: "700" },
+
+    /* Hero */
+    heroRow: {
+      minHeight: 116,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 2,
+      marginBottom: 8,
+    },
+    heroCopy: { flex: 1, minWidth: 0, justifyContent: "center", paddingRight: 0 },
+    heroTitle: { color: COLORS.text, fontSize: 24, lineHeight: 29, fontWeight: "800", letterSpacing: -0.6, marginBottom: 5 },
+    heroSubtitle: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 19 },
+    heroArtwork: { width: 116, height: 112, flexShrink: 0, marginRight: -4 },
+
+    /* Search */
+    searchCard: {
+      // The reusable PublicSearchBar already has its own outline.
+      // Keep this wrapper only for spacing so the search control has one border.
+      paddingHorizontal: 0,
+      paddingVertical: 0,
+      borderWidth: 0,
+      borderRadius: 0,
+      backgroundColor: 'transparent',
+    },
+    searchInputRow: { minHeight: 43, flexDirection: "row", alignItems: "center", gap: 9 },
+    searchInput: { flex: 1, minWidth: 0, color: COLORS.text, fontSize: 14, paddingVertical: 8 },
+    searchActionDivider: { width: StyleSheet.hairlineWidth, height: 28, backgroundColor: COLORS.border },
+    voiceButton: { minWidth: 31, minHeight: 36, alignItems: "center", justifyContent: "center" },
+    searchHint: { color: COLORS.textSecondary, fontSize: 11, lineHeight: 16, marginTop: 3 },
+
+    /* Sections */
+    section: { paddingTop: 19 },
+    sectionHeadingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 11 },
+    sectionTitle: { color: COLORS.text, fontSize: 17, lineHeight: 22, fontWeight: "700", letterSpacing: -0.2 },
+    sectionSubtitle: { color: COLORS.textMuted, fontSize: 11, lineHeight: 15, marginTop: 2 },
+    viewAll: { color: COLORS.primary, fontSize: 12, fontWeight: "700" },
+    nearbyHeading: { flex: 1, minWidth: 0 },
+
+    /* Specializations */
+    specializationsRow: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
+    specializationCard: {
+      flex: 1,
+      minWidth: 0,
+      minHeight: 77,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 7,
+      paddingHorizontal: 3,
+      paddingVertical: 10,
+      borderRadius: 13,
       backgroundColor: COLORS.backgroundElement,
       borderWidth: 1,
       borderColor: COLORS.border,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
-    exploreCopy: {
-      flex: 1,
-      gap: 3,
-    },
-    exploreTitle: {
-      color: COLORS.text,
-      fontSize: 15,
-      fontWeight: '700',
-    },
-    exploreSubtitle: {
-      color: COLORS.textSecondary,
-      fontSize: 12,
-    },
-    recommendedSection: {
-      paddingBottom: 8,
-    },
-    sectionHeadingRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 12,
-      gap: 8,
-    },
-    viewAll: {
-      color: COLORS.primary,
-      fontSize: 13,
-      fontWeight: '700',
-    },
-    loadingRow: {
-      minHeight: 70,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-    },
-    mutedText: {
-      color: COLORS.textMuted,
-      fontSize: 12,
-      lineHeight: 18,
-    },
+    specializationLabel: { color: COLORS.text, fontSize: 10, lineHeight: 13, fontWeight: "600", textAlign: "center" },
+    pressedCard: { opacity: 0.78, transform: [{ scale: 0.985 }] },
+
+    /* Dentist cards */
+    recommendedSection: { paddingBottom: 8 },
+    loadingRow: { minHeight: 76, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4 },
+    mutedText: { color: COLORS.textMuted, fontSize: 11, lineHeight: 16 },
     dentistCard: {
-      minHeight: 76,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      padding: 11,
+      minHeight: 82,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      padding: 10,
       marginBottom: 9,
       borderWidth: 1,
       borderColor: COLORS.border,
-      borderRadius: 16,
+      borderRadius: 15,
       backgroundColor: COLORS.surface,
     },
     dentistAvatar: {
-      width: 52,
-      height: 52,
-      borderRadius: 26,
+      width: 58,
+      height: 58,
+      flexShrink: 0,
+      overflow: "hidden",
+      borderRadius: 13,
       backgroundColor: COLORS.backgroundElement,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
     },
-    dentistInfo: {
-      flex: 1,
-      gap: 3,
-    },
-    dentistName: {
-      color: COLORS.text,
-      fontSize: 14,
-      fontWeight: '700',
-    },
-    dentistSpecialty: {
-      color: COLORS.textSecondary,
-      fontSize: 12,
-    },
-    dentistLocation: {
-      color: COLORS.textMuted,
-      fontSize: 11,
-    },
+    dentistPhoto: { width: "100%", height: "100%", borderRadius: 13 },
+    dentistInfo: { flex: 1, minWidth: 0, gap: 3 },
+    dentistName: { color: COLORS.text, fontSize: 14, lineHeight: 18, fontWeight: "700" },
+    dentistSpecialty: { color: COLORS.textSecondary, fontSize: 11, lineHeight: 15 },
+    dentistLocationRow: { flexDirection: "row", alignItems: "center", gap: 3, minWidth: 0 },
+    dentistLocation: { flex: 1, color: COLORS.textMuted, fontSize: 10, lineHeight: 14 },
+    profileAction: { flexDirection: "row", alignItems: "center", gap: 1, paddingLeft: 2 },
+    profileActionText: { color: COLORS.primary, fontSize: 11, fontWeight: "700" },
     emptyDentists: {
-      minHeight: 76,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
+      minHeight: 82,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
       padding: 12,
       borderWidth: 1,
       borderColor: COLORS.border,
       borderRadius: 15,
       backgroundColor: COLORS.surface,
     },
-    emptyDentistsText: {
-      flex: 1,
-      gap: 3,
-    },
-    emptyTitle: {
-      color: COLORS.text,
-      fontSize: 13,
-      fontWeight: '700',
-    },
+    emptyIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.backgroundElement },
+    emptyDentistsText: { flex: 1, minWidth: 0, gap: 3 },
+    emptyTitle: { color: COLORS.text, fontSize: 12, lineHeight: 16, fontWeight: "700" },
+
+    /* Guest bottom navigation */
     bottomBar: {
       minHeight: 62,
-      flexDirection: 'row',
-      alignItems: 'stretch',
+      flexDirection: "row",
+      alignItems: "stretch",
       backgroundColor: COLORS.tabBg,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: COLORS.tabBorderTop,
       paddingTop: 5,
+      paddingBottom: 2,
     },
-    tabItem: {
-      flex: 1,
-      minHeight: 52,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 4,
-    },
-    tabLabel: {
-      color: COLORS.tabInactive,
-      fontSize: 11,
-      fontWeight: '500',
-    },
-    tabLabelActive: {
-      color: COLORS.tabActive,
-      fontSize: 11,
-      fontWeight: '700',
-    },
-    modalBackdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.58)',
-      justifyContent: 'center',
-      padding: 22,
-    },
-    locationModal: {
-      backgroundColor: COLORS.surface,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-      borderRadius: 18,
-      padding: 18,
-      gap: 10,
-    },
-    modalHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    modalTitle: {
-      color: COLORS.text,
-      fontSize: 17,
-      fontWeight: '700',
-    },
-    locationInput: {
-      minHeight: 46,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-      borderRadius: 11,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      color: COLORS.text,
-      backgroundColor: COLORS.card,
-      fontSize: 15,
-      marginTop: 5,
-    },
+    tabItem: { flex: 1, minHeight: 52, alignItems: "center", justifyContent: "center", gap: 4 },
+    tabLabel: { color: COLORS.tabInactive, fontSize: 10, fontWeight: "500" },
+    tabLabelActive: { color: COLORS.tabActive, fontSize: 10, fontWeight: "700" },
+    tabPressed: { opacity: 0.65 },
+
+    /* Location modal */
+    modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.58)", justifyContent: "center", padding: 22 },
+    locationModal: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 18, padding: 18, gap: 10 },
+    modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    modalTitle: { color: COLORS.text, fontSize: 17, fontWeight: "700" },
+    locationInput: { minHeight: 46, borderWidth: 1, borderColor: COLORS.border, borderRadius: 11, paddingHorizontal: 12, paddingVertical: 10, color: COLORS.text, backgroundColor: COLORS.card, fontSize: 15, marginTop: 5 },
+    searchButton: { minHeight: 46, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", marginTop: 5, paddingHorizontal: 14 },
+    searchButtonText: { color: COLORS.badgeText, fontSize: 14, fontWeight: "700" },
   });
 };

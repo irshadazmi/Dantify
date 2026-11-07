@@ -7,10 +7,13 @@ use App\Models\Dentist;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
+use RuntimeException;
 
 class DentistController extends Controller
 {
-    
+
     /**
      * Search dentists available through active clinics.
      * Public endpoint for the patient booking flow.
@@ -66,7 +69,7 @@ class DentistController extends Controller
                     $locationTerms = collect(
                         preg_split('/[,;]+/', $validated['location'])
                     )
-                        ->map(fn ($term) => trim($term))
+                        ->map(fn($term) => trim($term))
                         ->filter()
                         ->values();
 
@@ -152,9 +155,19 @@ class DentistController extends Controller
 
         $dentist = Dentist::create([
             ...$validated,
-            'profile_photo_path' => $photoPath,
             'user_id' => $user->id,
         ]);
+
+        if ($request->hasFile('profile_photo')) {
+            $photoPath = $this->storeProfilePhoto(
+                $request->file('profile_photo'),
+                $dentist
+            );
+
+            $dentist->update([
+                'profile_photo_path' => $photoPath,
+            ]);
+        }
 
         return response()->json([
             'message' => 'Dentist profile created successfully.',
@@ -208,25 +221,35 @@ class DentistController extends Controller
 
         $oldPhotoPath = $dentist->profile_photo_path;
 
-        if ($request->hasFile('profile_photo')) {
-            $newPhotoPath = $request->file('profile_photo')
-                ->store('dentists', 'public');
-
-            $validated['profile_photo_path'] = $newPhotoPath;
-        } elseif ($request->boolean('remove_profile_photo')) {
-            $validated['profile_photo_path'] = null;
-        }
+        $removePhoto = (bool) ($validated['remove_profile_photo'] ?? false);
 
         unset(
             $validated['profile_photo'],
             $validated['remove_profile_photo']
         );
 
-        $dentist->update($validated);
+        // Save the updated name before generating the new photo filename.
+        $dentist->fill($validated);
+        $dentist->save();
 
-        $newPhotoPath = $dentist->profile_photo_path;
+        if ($request->hasFile('profile_photo')) {
+            $newPhotoPath = $this->storeProfilePhoto(
+                $request->file('profile_photo'),
+                $dentist
+            );
 
-        if ($oldPhotoPath && $oldPhotoPath !== $newPhotoPath) {
+            $dentist->update([
+                'profile_photo_path' => $newPhotoPath,
+            ]);
+
+            if ($oldPhotoPath && $oldPhotoPath !== $newPhotoPath) {
+                Storage::disk('public')->delete($oldPhotoPath);
+            }
+        } elseif ($removePhoto && $oldPhotoPath) {
+            $dentist->update([
+                'profile_photo_path' => null,
+            ]);
+
             Storage::disk('public')->delete($oldPhotoPath);
         }
 
@@ -243,7 +266,14 @@ class DentistController extends Controller
         Request $request,
         Dentist $dentist
     ): JsonResponse {
-        $this->authorizeDentistAccess($request, $dentist);
+        abort_unless(
+            $request->user()
+                ->role()
+                ->where('name', 'superadmin')
+                ->exists(),
+            403,
+            'Only OolaSystems SuperAdmin can delete dentist profiles.'
+        );
 
         $photoPath = $dentist->profile_photo_path;
 
@@ -281,6 +311,39 @@ class DentistController extends Controller
             'next_step' => 'dashboard',
             'data' => $dentist,
         ]);
+    }
+
+    /**
+     * Store dentist photo as:
+     * profiles/dentists/{user_id}-{name}.{extension}
+     */
+    private function storeProfilePhoto(
+        UploadedFile $photo,
+        Dentist $dentist
+    ): string {
+        $slug = Str::slug($dentist->name) ?: 'dentist';
+
+        $extension = strtolower($photo->extension() ?: 'jpg');
+
+        if ($extension === 'jpeg') {
+            $extension = 'jpg';
+        }
+
+        $filename = $dentist->user_id . '-' . $slug . '.' . $extension;
+
+        $path = $photo->storeAs(
+            'profiles/dentists',
+            $filename,
+            'public'
+        );
+
+        if (!$path) {
+            throw new RuntimeException(
+                'Unable to store the dentist profile photo.'
+            );
+        }
+
+        return $path;
     }
 
     /**

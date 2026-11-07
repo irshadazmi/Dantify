@@ -18,7 +18,9 @@ import { useAuth } from '@/contexts/auth-context';
 import { useStyles } from '@/styles/styles';
 import { useAppColors } from '@/hooks/use-app-colors';
 
-import { createService } from '@/services/dental-service';
+import { createDentalService } from '@/services/dental-service-service';
+
+import type { CreateDentalServicePayload } from '@/types/dental-service';
 
 function getErrorMessage(error: unknown): string {
   const err = error as {
@@ -35,7 +37,10 @@ function getErrorMessage(error: unknown): string {
 
   if (validationErrors) {
     const firstError = Object.values(validationErrors)[0]?.[0];
-    if (firstError) return firstError;
+
+    if (firstError) {
+      return firstError;
+    }
   }
 
   return (
@@ -49,6 +54,7 @@ export default function CreateServiceScreen() {
   const router = useRouter();
   const styles = useStyles();
   const colors = useAppColors();
+
   const { user, isLoading: authLoading } = useAuth();
 
   const roleName =
@@ -63,15 +69,17 @@ export default function CreateServiceScreen() {
   const [price, setPrice] = useState('');
   const [duration, setDuration] = useState('30');
   const [isActive, setIsActive] = useState(true);
+
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     if (saving) return;
 
     const serviceName = name.trim();
-    const numericPrice = Number(price);
-    const numericDuration = Number(duration);
+    const numericPrice = Number(price.trim());
+    const numericDuration = Number(duration.trim());
 
+    // Validate service name
     if (!serviceName) {
       Alert.alert(
         'Service name required',
@@ -80,6 +88,7 @@ export default function CreateServiceScreen() {
       return;
     }
 
+    // Validate price
     if (
       !price.trim() ||
       !Number.isFinite(numericPrice) ||
@@ -92,6 +101,7 @@ export default function CreateServiceScreen() {
       return;
     }
 
+    // Validate duration
     if (
       !duration.trim() ||
       !Number.isInteger(numericDuration) ||
@@ -104,16 +114,18 @@ export default function CreateServiceScreen() {
       return;
     }
 
+    const payload: CreateDentalServicePayload = {
+      name: serviceName,
+      description: description.trim() || null,
+      price: numericPrice,
+      duration_minutes: numericDuration,
+      is_active: isActive,
+    };
+
     try {
       setSaving(true);
 
-      await createService({
-        name: serviceName,
-        description: description.trim() || null,
-        price: numericPrice,
-        duration_minutes: numericDuration,
-        is_active: isActive,
-      });
+      await createDentalService(payload);
 
       Alert.alert(
         'Service created',
@@ -138,7 +150,10 @@ export default function CreateServiceScreen() {
   if (authLoading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator
+          size="large"
+          color={colors.primary}
+        />
       </View>
     );
   }
@@ -146,7 +161,10 @@ export default function CreateServiceScreen() {
   if (!isSuperAdmin) {
     return (
       <View style={styles.container}>
-        <AppText variant="title">Access restricted</AppText>
+        <AppText variant="title">
+          Access restricted
+        </AppText>
+
         <AppText variant="muted">
           Only Super Admin can manage the common service catalogue.
         </AppText>
@@ -170,6 +188,7 @@ export default function CreateServiceScreen() {
           their own price and duration.
         </AppText>
 
+        {/* Service Information */}
         <View style={styles.card}>
           <AppText style={styles.cardTitle}>
             Service Information
@@ -205,6 +224,7 @@ export default function CreateServiceScreen() {
           />
         </View>
 
+        {/* Default Pricing and Duration */}
         <View style={styles.card}>
           <AppText style={styles.cardTitle}>
             Default Pricing & Duration
@@ -248,6 +268,7 @@ export default function CreateServiceScreen() {
           </View>
         </View>
 
+        {/* Availability */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <AppText style={styles.cardTitle}>
@@ -283,11 +304,13 @@ export default function CreateServiceScreen() {
           </AppText>
         </View>
 
+        {/* Actions */}
         <View style={styles.actionsRow}>
           <Pressable
             onPress={() => void handleSave()}
             disabled={saving}
             accessibilityRole="button"
+            accessibilityLabel="Create dental service"
             style={[
               styles.actionButton,
               styles.replyButton,

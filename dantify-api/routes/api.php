@@ -4,7 +4,7 @@
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\AppointmentController;
+use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\AssociationDiscoveryController;
 use App\Http\Controllers\Api\AssociationScheduleController;
 use App\Http\Controllers\Api\DentistController;
@@ -13,8 +13,14 @@ use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Api\ClinicController;
 use App\Http\Controllers\Api\ClinicDentistInviteController;
-use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\DentalServiceController;
+use App\Http\Controllers\Api\MedicineController;
+use App\Http\Controllers\Api\DentalAdviceController;
 use App\Http\Controllers\Api\ClinicServiceController;
+
+// ======================================================
+// API HEALTH CHECK
+// ======================================================
 
 Route::get('/health', function () {
     return response()->json([
@@ -24,8 +30,12 @@ Route::get('/health', function () {
 });
 
 // ======================================================
-// PUBLIC AUTHENTICATION ROUTES
+// PUBLIC ROUTES
 // ======================================================
+
+// ------------------------------------------------------
+// PUBLIC DENTIST SEARCH AND PROFILE
+// ------------------------------------------------------
 
 Route::get('/booking/dentists', [
     DentistController::class,
@@ -37,10 +47,38 @@ Route::get('/booking/dentists/{dentist}', [
     'publicShow',
 ]);
 
+// ------------------------------------------------------
+// PUBLIC CLINIC SERVICES
+// ------------------------------------------------------
+
+Route::get(
+    '/public/clinics/{clinic}/services',
+    [ClinicServiceController::class, 'publicIndex']
+);
+
+// ------------------------------------------------------
+// PUBLIC BOOKING AVAILABILITY
+// These endpoints must be accessible without login.
+// ------------------------------------------------------
+
+Route::get(
+    '/bookings/availability',
+    [BookingController::class, 'availability']
+);
+
+Route::get(
+    '/bookings/check-slot',
+    [BookingController::class, 'checkSlot']
+);
+
+// ------------------------------------------------------
+// PUBLIC AUTHENTICATION
+// ------------------------------------------------------
+
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-// Phone OTP verification — required before registration
+// Phone OTP verification
 Route::post('/otp/send', [AuthController::class, 'sendOtp']);
 Route::post('/otp/verify', [AuthController::class, 'verifyOtp']);
 
@@ -55,29 +93,86 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::middleware('auth:sanctum')->group(function () {
 
     // --------------------------------------------------
-    // Authentication
+    // AUTHENTICATION
     // --------------------------------------------------
 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
 
+    // ==================================================
+    // BOOKING MANAGEMENT
+    // Availability and check-slot are public above.
+    // Creating and managing bookings require authentication.
+    // ==================================================
+
+    Route::get('/bookings', [BookingController::class, 'index']);
+    Route::post('/bookings', [BookingController::class, 'store']);
+    Route::get('/bookings/{id}', [BookingController::class, 'show']);
+    Route::put('/bookings/{id}', [BookingController::class, 'update']);
 
     // --------------------------------------------------
     // SERVICE MANAGEMENT
     // --------------------------------------------------
 
     // Common service catalogue — Super Admin
-    Route::get('/services', [ServiceController::class, 'index']);
-    Route::post('/services', [ServiceController::class, 'store']);
-    Route::get('/services/{service}', [ServiceController::class, 'show']);
-    Route::put('/services/{service}', [ServiceController::class, 'update']);
+    Route::get('/services', [DentalServiceController::class, 'index']);
+    Route::post('/services', [DentalServiceController::class, 'store']);
+    Route::get('/services/{service}', [DentalServiceController::class, 'show']);
+    Route::put('/services/{service}', [DentalServiceController::class, 'update']);
+
     Route::patch(
         '/services/{service}/status',
-        [ServiceController::class, 'updateStatus']
+        [DentalServiceController::class, 'updateStatus']
     );
 
-    // Clinic-specific services
+    // --------------------------------------------------
+    // MEDICINE MASTER CATALOGUE — SUPER ADMIN
+    // --------------------------------------------------
+
+    Route::get('/medicines', [MedicineController::class, 'index']);
+    Route::post('/medicines', [MedicineController::class, 'store']);
+    Route::get('/medicines/{medicine}', [MedicineController::class, 'show']);
+    Route::put('/medicines/{medicine}', [MedicineController::class, 'update']);
+
+    Route::patch(
+        '/medicines/{medicine}/status',
+        [MedicineController::class, 'updateStatus']
+    );
+
+    // --------------------------------------------------
+    // CLINICAL RECOMMENDATIONS — SUPER ADMIN
+    // --------------------------------------------------
+
+    Route::get(
+        '/dental-advices',
+        [DentalAdviceController::class, 'index']
+    );
+
+    Route::post(
+        '/dental-advices',
+        [DentalAdviceController::class, 'store']
+    );
+
+    Route::get(
+        '/dental-advices/{recommendation}',
+        [DentalAdviceController::class, 'show']
+    );
+
+    Route::put(
+        '/dental-advices/{recommendation}',
+        [DentalAdviceController::class, 'update']
+    );
+
+    Route::patch(
+        '/dental-advices/{recommendation}/status',
+        [DentalAdviceController::class, 'updateStatus']
+    );
+
+    // --------------------------------------------------
+    // CLINIC-SPECIFIC SERVICES
+    // --------------------------------------------------
+
     Route::get(
         '/clinic/services/catalogue',
         [ClinicServiceController::class, 'catalogue']
@@ -103,10 +198,9 @@ Route::middleware('auth:sanctum')->group(function () {
         [ClinicServiceController::class, 'updateStatus']
     );
 
-
     // --------------------------------------------------
     // ASSOCIATION DISCOVERY
-    // Register before resource routes
+    // Register before resource routes.
     // --------------------------------------------------
 
     Route::get('/clinics/discover', [
@@ -118,7 +212,6 @@ Route::middleware('auth:sanctum')->group(function () {
         AssociationDiscoveryController::class,
         'dentists',
     ]);
-
 
     // --------------------------------------------------
     // ASSOCIATION SCHEDULE MANAGEMENT
@@ -144,14 +237,12 @@ Route::middleware('auth:sanctum')->group(function () {
         [AssociationScheduleController::class, 'cancel']
     );
 
-
     // --------------------------------------------------
     // CLINIC PROFILE AND CRUD
     // --------------------------------------------------
 
     Route::get('/my/clinic-profile', [ClinicController::class, 'myProfile']);
     Route::apiResource('clinics', ClinicController::class);
-
 
     // --------------------------------------------------
     // DENTIST PROFILE AND CRUD
@@ -160,14 +251,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/my/dentist-profile', [DentistController::class, 'myProfile']);
     Route::apiResource('dentists', DentistController::class);
 
-
     // --------------------------------------------------
     // PATIENT PROFILE AND CRUD
     // --------------------------------------------------
 
     Route::get('/my/patient-profile', [PatientController::class, 'myProfile']);
     Route::apiResource('patients', PatientController::class);
-
 
     // --------------------------------------------------
     // STAFF PROFILE AND CRUD
@@ -176,14 +265,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/my/staff-profile', [StaffController::class, 'myProfile']);
     Route::apiResource('staffs', StaffController::class);
 
-
     // --------------------------------------------------
     // LABORATORY PROFILE AND CRUD
     // --------------------------------------------------
 
     Route::get('/my/laboratory-profile', [LaboratoryController::class, 'myProfile']);
     Route::apiResource('laboratories', LaboratoryController::class);
-
 
     // --------------------------------------------------
     // CLINIC-DENTIST ASSOCIATIONS
@@ -219,13 +306,3 @@ Route::middleware('auth:sanctum')->group(function () {
     );
 
 });
-
-
-// ======================================================
-// APPOINTMENT APIs
-// ======================================================
-
-Route::get('/appointments', [AppointmentController::class, 'index']);
-Route::post('/appointments', [AppointmentController::class, 'store']);
-Route::get('/appointments/{id}', [AppointmentController::class, 'show']);
-Route::put('/appointments/{id}', [AppointmentController::class, 'update']);

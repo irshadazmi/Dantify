@@ -1,6 +1,3 @@
-
-// src/app/(auth)/register.tsx
-
 import React from "react";
 import {
   ActivityIndicator,
@@ -13,7 +10,10 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import {
+  useLocalSearchParams,
+  useRouter,
+} from "expo-router";
 
 import { useStyles } from "@/styles/styles";
 import { useAppColors } from "@/hooks/use-app-colors";
@@ -37,17 +37,23 @@ type ApiError = {
   errors?: Record<string, string | string[]>;
 };
 
+/* ======================================================
+   ERROR HANDLING
+====================================================== */
+
 function getErrorMessage(error: unknown): string {
   if (typeof error === "object" && error !== null) {
     const apiError = error as {
       message?: string;
       response?: { data?: ApiError };
     };
+
     const data = apiError.response?.data;
 
     if (data?.errors) {
       const first = Object.values(data.errors)[0];
       const message = Array.isArray(first) ? first[0] : first;
+
       if (message) return message;
     }
 
@@ -59,46 +65,109 @@ function getErrorMessage(error: unknown): string {
   return "Unable to create your account. Please check your details and try again.";
 }
 
+/* ======================================================
+   ROUTE HELPERS
+====================================================== */
+
+function getSafeBookingRedirect(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  if (value === "/booking/availability" || value === "/booking/review") {
+    return value;
+  }
+
+  return /^\/booking\?dentistId=[1-9]\d*$/.test(value)
+    ? value
+    : null;
+}
+
+function getBookingRouteParams(
+  params: Record<string, string | string[] | undefined>,
+): Record<string, string> {
+  const result: Record<string, string> = {};
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (key === "redirectTo" || value === undefined) {
+      return;
+    }
+
+    result[key] = Array.isArray(value) ? value[0] : value;
+  });
+
+  return result;
+}
+
+/* ======================================================
+   COMPONENT
+====================================================== */
+
 export default function RegisterScreen() {
   const styles = useStyles();
   const colors = useAppColors();
   const router = useRouter();
 
-  const [role, setRole] = React.useState<UserType>("clinic");
+  const params = useLocalSearchParams<
+    Record<string, string | string[]>
+  >();
+
+  const redirectParam = Array.isArray(params.redirectTo)
+    ? params.redirectTo[0]
+    : params.redirectTo;
+
+  const redirectTo = getSafeBookingRedirect(redirectParam);
+
+  const bookingParams = getBookingRouteParams(params);
+
+  const [role, setRole] = React.useState<UserType>(
+    redirectTo === "/booking/availability" || redirectTo === "/booking/review" ? "patient" : "clinic"
+  );
   const [values, setValues] = React.useState<RegisterFormValues | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  /* ----------------------------------------------------
+     REGISTRATION
+  ---------------------------------------------------- */
+
   const handleRegister = async () => {
     if (submitting) return;
+
     setError(null);
 
     if (!values) {
       setError("Please complete the account details.");
       return;
     }
+
     if (!values.phone.trim()) {
       setError("Phone number is required.");
       return;
     }
+
     if (!values.otp_verified || !values.verification_token) {
       setError("Please verify your phone number before registering.");
       return;
     }
+
     if (!values.email.trim()) {
       setError("Email is required.");
       return;
     }
+
     if (values.password.length < 8) {
       setError("Password must contain at least 8 characters.");
       return;
     }
+
     if (values.password !== values.confirm_password) {
       setError("Passwords do not match.");
       return;
     }
 
     setSubmitting(true);
+
     try {
       const payload: RegisterRequest = {
         phone: values.phone.trim(),
@@ -110,16 +179,34 @@ export default function RegisterScreen() {
       };
 
       // Registration does not automatically sign in.
+      // Call the registration API only once.
       await authService.register(payload);
-      console.log('[Registration] Selected role:', role);
-      await authService.register(payload);
-      router.replace("/(auth)/login" as never);
+
+      // Preserve the booking destination only for patient accounts.
+      // Registration does not automatically sign in.
+      // Continue to the existing login screen and preserve
+      // the booking details for patient accounts.
+
+      router.replace({
+        pathname: "/(auth)/login",
+        params:
+          role === "patient" && redirectTo
+            ? {
+              ...bookingParams,
+              redirectTo,
+            }
+            : {},
+      } as never);
     } catch (submitError) {
       setError(getErrorMessage(submitError));
     } finally {
       setSubmitting(false);
     }
   };
+
+  /* ----------------------------------------------------
+     KEYBOARD VISIBILITY
+  ---------------------------------------------------- */
 
   const [keyboardVisible, setKeyboardVisible] = React.useState(false);
 
@@ -162,6 +249,8 @@ export default function RegisterScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.container, { paddingTop: 8 }]}>
+          {/* ---------- BRAND ---------- */}
+
           <View style={{ alignItems: "center", marginBottom: 6 }}>
             <Image
               source={require("@/assets/images/dantify-logo.png")}
@@ -173,8 +262,11 @@ export default function RegisterScreen() {
 
           <AppText style={styles.title}>Create an Account</AppText>
 
+          {/* ---------- ACCOUNT ROLE ---------- */}
+
           <View style={{ marginBottom: 8 }}>
             <AppText style={styles.chipLabel}>Register As:</AppText>
+
             <AppChipGroup
               options={REGISTRATION_ROLE_OPTIONS}
               value={role}
@@ -184,6 +276,8 @@ export default function RegisterScreen() {
               }}
             />
           </View>
+
+          {/* ---------- ACCOUNT DETAILS ---------- */}
 
           <View style={[styles.card, { paddingTop: 10, paddingBottom: 10 }]}>
             <AppText variant="subtitle" style={{ marginBottom: 6 }}>
@@ -201,6 +295,8 @@ export default function RegisterScreen() {
               }}
             />
 
+            {/* Registration Error */}
+
             {error && (
               <View
                 accessibilityRole="alert"
@@ -217,15 +313,23 @@ export default function RegisterScreen() {
               </View>
             )}
 
+            {/* Submit */}
+
             <Pressable
               onPress={handleRegister}
               disabled={submitting}
               accessibilityRole="button"
               accessibilityLabel="Create account"
-              accessibilityState={{ disabled: submitting, busy: submitting }}
+              accessibilityState={{
+                disabled: submitting,
+                busy: submitting,
+              }}
               style={[
                 styles.button,
-                { marginTop: 8, opacity: submitting ? 0.7 : 1 },
+                {
+                  marginTop: 8,
+                  opacity: submitting ? 0.7 : 1,
+                },
               ]}
             >
               {submitting ? (
@@ -238,13 +342,19 @@ export default function RegisterScreen() {
                   }}
                 >
                   <ActivityIndicator color={colors.badgeText} />
-                  <Text style={styles.buttonText}>Creating account...</Text>
+                  <Text style={styles.buttonText}>
+                    Creating account...
+                  </Text>
                 </View>
               ) : (
-                <Text style={styles.buttonText}>Create Account</Text>
+                <Text style={styles.buttonText}>
+                  Create Account
+                </Text>
               )}
             </Pressable>
           </View>
+
+          {/* ---------- LOGIN LINK ---------- */}
 
           <View
             style={{
@@ -256,9 +366,20 @@ export default function RegisterScreen() {
               marginBottom: 4,
             }}
           >
-            <Text style={styles.mutedText}>Already have an account? </Text>
+            <Text style={styles.mutedText}>
+              Already have an account?{" "}
+            </Text>
+
             <Pressable
-              onPress={() => router.push("/(auth)/login" as never)}
+              onPress={() =>
+                router.push({
+                  pathname: "/(auth)/login",
+                  params: {
+                    ...bookingParams,
+                    ...(redirectTo ? { redirectTo } : {}),
+                  },
+                } as never)
+              }
               accessibilityRole="link"
             >
               <Text

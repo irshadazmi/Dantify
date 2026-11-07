@@ -1,8 +1,6 @@
-
 /**
- * Shared address fields used by all Dantify profiles.
+ * Common address fields shared across profile types.
  */
-
 export interface Address {
   address: string;
   city: string;
@@ -11,6 +9,11 @@ export interface Address {
   postal_code: string;
 }
 
-export type AddressFormValues = Address;
+/**
+ * Use when address fields may be nullable in API responses.
+ */
+export type NullableAddress = {
+  [K in keyof Address]: Address[K] | null;
+};
 
-export type AddressPayload = Partial<Address>;
+export type AddressFormValues = Address;

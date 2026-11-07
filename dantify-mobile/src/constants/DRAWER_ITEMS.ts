@@ -48,6 +48,18 @@ export const DRAWER_ITEMS = [
     ],
   },
   {
+    name: '/medicines',
+    title: 'Medicines',
+    icon: 'pills.fill',
+    roles: [ROLES.SUPER_ADMIN],
+  },
+  {
+    name: '/dental-advices',
+    title: 'Dental Advice',
+    icon: 'list.clipboard.fill',
+    roles: [ROLES.SUPER_ADMIN],
+  },
+  {
     name: '/profiles/clinic',
     title: 'Our Profile',
     icon: 'person.crop.circle.fill',
@@ -60,6 +72,12 @@ export const DRAWER_ITEMS = [
     roles: [ROLES.DENTIST],
   },
   {
+    name: '/profiles/staff',
+    title: 'My Profile',
+    icon: 'person.crop.circle.fill',
+    roles: [ROLES.STAFF],
+  },
+  {
     name: '/associations',
     title: 'Associations',
     roleTitles: {
@@ -68,6 +86,14 @@ export const DRAWER_ITEMS = [
     },
     icon: 'person.2.fill',
     roles: [ROLES.CLINIC, ROLES.DENTIST],
+  },
+  {
+    name: '/profiles/staff',
+    title: 'Our Staffs',
+    icon: 'person.fill',
+    roles: [
+      ROLES.CLINIC,
+    ],
   },
   {
     name: '/patients',

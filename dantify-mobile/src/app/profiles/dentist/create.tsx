@@ -6,7 +6,7 @@ import DentistForm, { type DentistFormValues } from '@/components/forms/dentist-
 import dentistService from '@/services/dentist-service';
 import type { DentistCreatePayload } from '@/types/dentist';
 import { AppText } from '@/components/ui/app-text';
-import { useAppColors } from '@/hooks/use-app-colors';
+import { ScreenHeader } from '@/components/ui/screen-header';
 import { useStyles } from '@/styles/styles';
 
 function toPayload(values: DentistFormValues): DentistCreatePayload {
@@ -27,22 +27,31 @@ function toPayload(values: DentistFormValues): DentistCreatePayload {
 
 export default function CreateDentistProfile() {
   const styles = useStyles();
-  const colors = useAppColors();
   const router = useRouter();
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = useCallback(async (values: DentistFormValues) => {
     if (saving) return;
+
     setSaving(true);
     setError(null);
+
     try {
       await dentistService.create(toPayload(values));
       router.replace('/profiles/dentist' as never);
     } catch (err: any) {
       const data = err?.response?.data;
-      const validationErrors = data?.errors ? Object.values(data.errors).flat().join('\n') : null;
-      setError(validationErrors || data?.message || 'Unable to create your dentist profile. Please try again.');
+      const validationErrors = data?.errors
+        ? Object.values(data.errors).flat().join('\n')
+        : null;
+
+      setError(
+        validationErrors ||
+          data?.message ||
+          'Unable to create your dentist profile. Please try again.',
+      );
     } finally {
       setSaving(false);
     }
@@ -50,16 +59,30 @@ export default function CreateDentistProfile() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: 10, paddingBottom: 48, flexGrow: 1 }}
+      style={styles.profileScroll}
+      contentContainerStyle={styles.profileFormScrollContent}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       automaticallyAdjustKeyboardInsets
     >
-      <AppText style={styles.title}>Create Dentist Profile</AppText>
-      <AppText style={[styles.subtitle, { color: colors.textMuted, marginBottom: 20 }]}>Add your professional details and profile photo.</AppText>
-      {error ? <AppText variant="error" style={{ marginBottom: 12 }}>{error}</AppText> : null}
-      <DentistForm onChange={() => undefined} onSubmit={handleSubmit} saving={saving} />
+      <ScreenHeader
+        title="Create Dentist Profile"
+        subtitle="Add your professional details and profile photo."
+        showBack
+        onBack={() => router.back()}
+      />
+
+      {error ? (
+        <AppText variant="error" style={styles.profileFormError}>
+          {error}
+        </AppText>
+      ) : null}
+
+      <DentistForm
+        onChange={() => undefined}
+        onSubmit={handleSubmit}
+        saving={saving}
+      />
     </ScrollView>
   );
 }

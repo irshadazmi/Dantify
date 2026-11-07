@@ -1,8 +1,13 @@
-import type { Address } from '@/types/address';
+import type { Address } from './address';
+import type {
+  ApiResponse,
+  PaginatedApiResponse,
+} from './api';
 
-/**
- * Full patient entity returned by the backend.
- */
+/* ======================================================
+   PATIENT
+====================================================== */
+
 export interface Patient extends Address {
   id: number;
   user_id: number;
@@ -11,55 +16,50 @@ export interface Patient extends Address {
   dob: string; // YYYY-MM-DD
   phone: string | null;
   email: string | null;
+  profile_photo_path?: string | null;
+  profile_photo_url: string | null;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string | null;
 }
 
-/**
- * Payload to create a patient profile.
- * user_id should be derived from the authenticated user on the backend.
- */
-export interface PatientCreateRequest extends Address {
+/* ======================================================
+   CREATE / UPDATE PAYLOADS
+====================================================== */
+
+export interface ProfilePhotoPayload {
+  uri: string;
   name: string;
-  gender: string;
-  dob: string; // YYYY-MM-DD
-  phone: string | null;
-  email: string | null;
-  is_active?: boolean;
+  type: string;
 }
 
-/**
- * Payload to update a patient profile.
- */
-export type PatientUpdateRequest = Partial<
-  Omit<PatientCreateRequest, 'is_active'>
-> & {
-  is_active?: boolean;
-};
+export interface PatientCreatePayload extends Address {
+  name: string;
+  gender?: string | null;
+  dob?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  profile_photo?: ProfilePhotoPayload | null;
+}
 
-/**
- * API response aliases.
- */
-export type PatientResponse = Patient;
-export type PatientsResponse = Patient[];
+export interface PatientUpdatePayload extends Partial<Address> {
+  name?: string;
+  gender?: string | null;
+  dob?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  profile_photo?: ProfilePhotoPayload | null;
+  remove_profile_photo?: boolean;
+}
 
-/**
- * Response from GET /api/my/patient-profile.
- */
-export interface MyPatientProfileResponse {
-  message?: string;
+/* ======================================================
+   DENTIST PROFILE RESPONSES
+====================================================== */
+
+export interface MyPatientProfileResponse
+  extends ApiResponse<Patient | null> {
   next_step: 'create_profile' | 'dashboard';
-  data: Patient | null;
 }
 
-/**
- * Paginated response for patient listings, if returned by the API.
- */
-export interface PaginatedPatientsResponse {
-  data: Patient[];
-  current_page: number;
-  last_page: number;
-  per_page: number;
-  total: number;
-}
+export type PaginatedPatientsResponse =
+  PaginatedApiResponse<Patient>;

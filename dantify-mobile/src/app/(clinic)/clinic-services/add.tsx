@@ -1,4 +1,3 @@
-
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,22 +9,22 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
+import { useStyles } from '@/styles/styles';
+import { useAppColors } from '@/hooks/use-app-colors';
+
 import { AppText } from '@/components/ui/app-text';
 import { AppInput } from '@/components/ui/app-input';
 import { StatusBadge } from '@/components/ui/status-badge';
 
-import { useStyles } from '@/styles/styles';
-
 import {
-  getAvailableServiceCatalogue,
-  getClinicServices,
-  addClinicService,
-} from '@/services/dental-service';
+  getAvailableDentalServices,
+  getClinicServiceOfferings,
+  addClinicServiceOffering,
+} from '@/services/clinic-service-offering-service';
 
-import type {
-  Service,
-  ClinicService,
-} from '@/types/service';
+import type { DentalService } from '@/types/dental-service';
+import type { ClinicServiceOffering } from '@/types/clinic-service-offering';
+import { ScreenHeader } from '@/components/ui/screen-header';
 
 function getErrorMessage(error: unknown): string {
   const err = error as {
@@ -39,13 +38,9 @@ function getErrorMessage(error: unknown): string {
   };
 
   const validationErrors = err.response?.data?.errors;
-
   if (validationErrors) {
     const firstError = Object.values(validationErrors)[0]?.[0];
-
-    if (firstError) {
-      return firstError;
-    }
+    if (firstError) return firstError;
   }
 
   return (
@@ -56,37 +51,28 @@ function getErrorMessage(error: unknown): string {
 }
 
 function formatPrice(value: string | number | null | undefined): string {
-  if (value === null || value === undefined || value === '') {
-    return 'Not set';
-  }
-
-  const price = Number(value);
-
-  return Number.isFinite(price)
-    ? `₹${price.toFixed(2)}`
-    : 'Not set';
+  if (value === null || value === undefined || value === '') return 'Not set';
+  const amount = Number(value);
+  return Number.isFinite(amount) ? `₹${amount.toFixed(2)}` : 'Not set';
 }
 
 export default function AddClinicServiceScreen() {
   const router = useRouter();
   const styles = useStyles();
+  const COLORS = useAppColors();
 
-  const [services, setServices] = useState<Service[]>([]);
-  const [clinicServices, setClinicServices] = useState<ClinicService[]>([]);
-
+  const [catalogue, setCatalogue] = useState<DentalService[]>([]);
+  const [clinicOfferings, setClinicOfferings] = useState<ClinicServiceOffering[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedService, setSelectedService] =
-    useState<Service | null>(null);
-
+  const [selectedService, setSelectedService] = useState<DentalService | null>(null);
   const [clinicPrice, setClinicPrice] = useState('');
   const [clinicDuration, setClinicDuration] = useState('');
 
-  // Load available catalogue services and existing clinic services.
   const loadCatalogue = useCallback(async () => {
     try {
       setError(null);
@@ -96,38 +82,13 @@ export default function AddClinicServiceScreen() {
         per_page: 100,
       };
 
-      const [catalogueResult, clinicResult] = await Promise.all([
-        getAvailableServiceCatalogue({
-          ...params,
-          is_active: true,
-        }),
-        getClinicServices(params),
+      const [catalogueResult, offeringResult] = await Promise.all([
+        getAvailableDentalServices({ ...params, is_active: true }),
+        getClinicServiceOfferings(params),
       ]);
 
-      const existingServices = clinicResult.data;
-
-      // Combine available master services and existing clinic offerings.
-      const serviceMap = new Map<number, Service>();
-
-      catalogueResult.data.forEach((service) => {
-        serviceMap.set(service.id, service);
-      });
-
-      existingServices.forEach((offering) => {
-        if (offering.service) {
-          serviceMap.set(
-            offering.service_id,
-            offering.service,
-          );
-        }
-      });
-
-      const sortedServices = Array.from(serviceMap.values()).sort(
-        (a, b) => a.name.localeCompare(b.name),
-      );
-
-      setServices(sortedServices);
-      setClinicServices(existingServices);
+      setCatalogue(catalogueResult.data);
+      setClinicOfferings(offeringResult.data);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -136,13 +97,11 @@ export default function AddClinicServiceScreen() {
     }
   }, [search]);
 
-  // Debounced search.
   useEffect(() => {
+    setLoading(true);
     const timer = setTimeout(() => {
-      setLoading(true);
       void loadCatalogue();
-    }, 350);
-
+    }, 300);
     return () => clearTimeout(timer);
   }, [loadCatalogue]);
 
@@ -151,14 +110,13 @@ export default function AddClinicServiceScreen() {
     void loadCatalogue();
   }, [loadCatalogue]);
 
-  // Select a master service and prefill its default values.
-  const selectService = (service: Service) => {
+  const existingOfferingByServiceId = new Map(
+    clinicOfferings.map((offering) => [offering.dental_service_id, offering]),
+  );
+
+  const selectService = (service: DentalService) => {
     setSelectedService(service);
-    setClinicPrice(
-      service.price === null || service.price === undefined
-        ? ''
-        : String(service.price),
-    );
+    setClinicPrice(String(service.price ?? ''));
     setClinicDuration(String(service.duration_minutes ?? ''));
   };
 
@@ -168,123 +126,81 @@ export default function AddClinicServiceScreen() {
     setClinicDuration('');
   };
 
-  // Save the clinic-specific service offering.
   const saveClinicService = async () => {
-    if (!selectedService || saving) {
-      return;
-    }
+    if (!selectedService || saving) return;
 
     const price = Number(clinicPrice);
     const duration = Number(clinicDuration);
 
-    if (
-      !clinicPrice.trim() ||
-      !Number.isFinite(price) ||
-      price < 0
-    ) {
-      Alert.alert(
-        'Invalid price',
-        'Please enter a valid clinic service price.',
-      );
+    if (!clinicPrice.trim() || !Number.isFinite(price) || price < 0) {
+      Alert.alert('Invalid price', 'Enter a valid clinic price (zero or greater).');
       return;
     }
 
-    if (
-      !clinicDuration.trim() ||
-      !Number.isInteger(duration) ||
-      duration <= 0
-    ) {
-      Alert.alert(
-        'Invalid duration',
-        'Please enter a positive whole number of minutes.',
-      );
+    if (!clinicDuration.trim() || !Number.isInteger(duration) || duration <= 0) {
+      Alert.alert('Invalid duration', 'Enter a positive whole number of minutes.');
       return;
     }
 
     try {
       setSaving(true);
-
-      await addClinicService({
-        service_id: selectedService.id,
+      await addClinicServiceOffering({
+        dental_service_id: selectedService.id,
         price,
         duration_minutes: duration,
       });
 
-      const addedName = selectedService.name;
-
+      const name = selectedService.name;
       cancelSelection();
-
       await loadCatalogue();
-
-      Alert.alert(
-        'Service added',
-        `${addedName} has been added to your clinic services.`,
-      );
+      Alert.alert('Service added', `${name} has been added to your clinic offerings.`);
     } catch (err) {
-      Alert.alert(
-        'Unable to add service',
-        getErrorMessage(err),
-      );
+      Alert.alert('Unable to add service', getErrorMessage(err));
     } finally {
       setSaving(false);
     }
   };
 
-  // Configuration panel displayed above the catalogue.
   const renderConfiguration = () => {
-    if (!selectedService) {
-      return null;
-    }
+    if (!selectedService) return null;
 
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <AppText style={styles.cardTitle}>
-            Configure Clinic Service
-          </AppText>
-
-          <StatusBadge
-            label="New"
-            variant="info"
-          />
+          <AppText style={styles.cardTitle}>Configure Clinic Offering</AppText>
+          <StatusBadge label="Selected" variant="info" />
         </View>
 
+        <AppText variant="label">{selectedService.name}</AppText>
+        {!!selectedService.description && (
+          <AppText variant="muted">{selectedService.description}</AppText>
+        )}
+
+        <AppText style={styles.sectionLabel}>Your clinic price (₹)</AppText>
+        <AppInput
+          style={styles.textInput}
+          value={clinicPrice}
+          onChangeText={setClinicPrice}
+          placeholder="Enter your clinic price"
+          keyboardType="decimal-pad"
+          editable={!saving}
+        />
+
+        <AppText style={styles.sectionLabel}>Appointment duration (minutes)</AppText>
+        <AppInput
+          style={styles.textInput}
+          value={clinicDuration}
+          onChangeText={setClinicDuration}
+          placeholder="Enter duration in minutes"
+          keyboardType="number-pad"
+          editable={!saving}
+        />
+
         <AppText variant="muted">
-          {selectedService.name}
+          Common catalogue default: {formatPrice(selectedService.price)} · {selectedService.duration_minutes} minutes
         </AppText>
-
-        <View style={styles.phoneRow}>
-          <View style={styles.phoneInput}>
-            <AppText style={styles.sectionLabel}>
-              Clinic Price (₹)
-            </AppText>
-
-            <AppInput
-              value={clinicPrice}
-              onChangeText={setClinicPrice}
-              placeholder="Enter price"
-              keyboardType="decimal-pad"
-            />
-          </View>
-
-          <View style={styles.phoneInput}>
-            <AppText style={styles.sectionLabel}>
-              Duration (minutes)
-            </AppText>
-
-            <AppInput
-              value={clinicDuration}
-              onChangeText={setClinicDuration}
-              placeholder="Minutes"
-              keyboardType="number-pad"
-            />
-          </View>
-        </View>
-
         <AppText variant="muted">
-          Catalogue default: {formatPrice(selectedService.price)}
-          {' · '}
-          {selectedService.duration_minutes ?? 'Not set'} minutes
+          These settings apply only to your clinic. The common catalogue will not be changed.
         </AppText>
 
         <View style={styles.actionsRow}>
@@ -292,11 +208,7 @@ export default function AddClinicServiceScreen() {
             onPress={() => void saveClinicService()}
             disabled={saving}
             accessibilityRole="button"
-            accessibilityLabel="Save clinic service"
-            accessibilityState={{
-              disabled: saving,
-              busy: saving,
-            }}
+            accessibilityState={{ disabled: saving, busy: saving }}
             style={[
               styles.actionButton,
               styles.replyButton,
@@ -304,11 +216,9 @@ export default function AddClinicServiceScreen() {
             ]}
           >
             {saving ? (
-              <ActivityIndicator color="white" />
+              <ActivityIndicator color={COLORS.badgeText} />
             ) : (
-              <AppText style={styles.actionButtonText}>
-                Save Service
-              </AppText>
+              <AppText style={styles.actionButtonText}>Add to My Clinic</AppText>
             )}
           </Pressable>
 
@@ -316,84 +226,55 @@ export default function AddClinicServiceScreen() {
             onPress={cancelSelection}
             disabled={saving}
             accessibilityRole="button"
-            accessibilityLabel="Cancel service configuration"
-            style={[
-              styles.actionButton,
-              styles.editButton,
-              saving && styles.disabledButton,
-            ]}
+            style={[styles.actionButton, styles.editButton]}
           >
-            <AppText style={styles.actionButtonText}>
-              Cancel
-            </AppText>
+            <AppText style={styles.actionButtonText}>Cancel</AppText>
           </Pressable>
         </View>
       </View>
     );
   };
 
-  // Individual common catalogue service.
-  const renderService = ({ item }: { item: Service }) => {
-    const existingOffering = clinicServices.find(
-      (offering) => offering.service_id === item.id,
-    );
-
-    const isAdded = Boolean(existingOffering);
-    const isSelected = selectedService?.id === item.id;
+  const renderService = ({ item }: { item: DentalService }) => {
+    const existing = existingOfferingByServiceId.get(item.id);
+    const alreadyAdded = Boolean(existing);
 
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <AppText style={styles.cardTitle}>
-            {item.name}
-          </AppText>
-
+          <AppText style={styles.cardTitle}>{item.name}</AppText>
           <StatusBadge
-            label={isAdded ? 'Added' : 'Available'}
-            variant={isAdded ? 'success' : 'neutral'}
+            label={alreadyAdded ? 'Already added' : 'Available'}
+            variant={alreadyAdded ? 'success' : 'neutral'}
           />
         </View>
 
-        {!!item.description && (
-          <AppText variant="muted">
-            {item.description}
-          </AppText>
-        )}
+        {!!item.description && <AppText variant="muted">{item.description}</AppText>}
 
         <View style={styles.metaRow}>
-          <AppText variant="muted">
-            Catalogue: {formatPrice(item.price)}
-          </AppText>
-
-          <AppText variant="muted">
-            {item.duration_minutes ?? 'Not set'} min
-          </AppText>
+          <AppText variant="muted">Catalogue: {formatPrice(item.price)}</AppText>
+          <AppText variant="muted">{item.duration_minutes} min</AppText>
         </View>
 
-        {isAdded ? (
+        {alreadyAdded ? (
           <AppText variant="muted">
-            Your clinic: {formatPrice(existingOffering?.price)}
-            {' · '}
-            {existingOffering?.duration_minutes ?? 'Not set'} min
+            Your clinic: {formatPrice(existing?.price)} · {existing?.duration_minutes} min
           </AppText>
         ) : (
           <View style={styles.actionsRow}>
             <Pressable
               onPress={() => selectService(item)}
-              disabled={Boolean(selectedService)}
+              disabled={Boolean(selectedService) || saving}
               accessibilityRole="button"
-              accessibilityLabel={`Add ${item.name}`}
-              accessibilityState={{
-                disabled: Boolean(selectedService),
-              }}
+              accessibilityState={{ disabled: Boolean(selectedService) || saving }}
               style={[
                 styles.actionButton,
                 styles.replyButton,
-                Boolean(selectedService) && styles.disabledButton,
+                (Boolean(selectedService) || saving) && styles.disabledButton,
               ]}
             >
               <AppText style={styles.actionButtonText}>
-                {isSelected ? 'Selected' : 'Add Service'}
+                {selectedService?.id === item.id ? 'Selected' : 'Select Service'}
               </AppText>
             </Pressable>
           </View>
@@ -404,89 +285,62 @@ export default function AddClinicServiceScreen() {
 
   return (
     <View style={styles.container}>
-      <AppText variant="title">
-        Common Service Catalogue
-      </AppText>
-
-      <AppText variant="muted">
-        Choose services offered by your clinic and configure your
-        own price and duration.
-      </AppText>
+      <ScreenHeader
+        title="Add Clinic Services"
+        subtitle="Select common dental services and set your clinic's price and duration."
+        showBack
+        onBack={() => router.back()}
+      />
 
       <AppInput
         style={styles.searchInput}
         value={search}
         onChangeText={setSearch}
-        placeholder="Search dental services..."
+        placeholder="Search common dental services..."
         returnKeyType="search"
-        accessibilityLabel="Search dental services"
+        accessibilityLabel="Search common dental services"
       />
 
-      {error && (
-        <View style={styles.replyBox}>
-          <AppText variant="error">
-            {error}
-          </AppText>
-
-          <Pressable
-            onPress={() => {
-              setLoading(true);
-              void loadCatalogue();
-            }}
-            accessibilityRole="button"
-          >
-            <AppText variant="link">
-              Retry
-            </AppText>
+      {!!error && (
+        <View style={styles.errorContainer}>
+          <AppText variant="error">{error}</AppText>
+          <Pressable onPress={() => {
+            setLoading(true);
+            void loadCatalogue();
+          }}>
+            <AppText variant="link">Retry</AppText>
           </Pressable>
         </View>
       )}
 
       {loading ? (
         <View style={styles.emptyState}>
-          <ActivityIndicator size="large" />
-
-          <AppText variant="muted">
-            Loading common services...
-          </AppText>
+          <ActivityIndicator color={COLORS.primary} size="large" />
+          <AppText variant="muted">Loading common dental services...</AppText>
         </View>
       ) : (
         <FlatList
-          data={services}
+          data={catalogue}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderService}
           ListHeaderComponent={renderConfiguration}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
+              tintColor={COLORS.primary}
             />
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <AppText variant="label">
-                No services found
-              </AppText>
-
+              <AppText variant="label">No common services found</AppText>
               <AppText variant="muted">
                 {search.trim()
                   ? 'Try another search term.'
-                  : 'No common services are currently available.'}
+                  : 'There are currently no active services in the common catalogue.'}
               </AppText>
-            </View>
-          }
-          ListFooterComponent={
-            <View style={styles.headerRow}>
-              <Pressable
-                onPress={() => router.back()}
-                accessibilityRole="button"
-              >
-                <AppText variant="link">
-                  Back to Our Services
-                </AppText>
-              </Pressable>
             </View>
           }
         />

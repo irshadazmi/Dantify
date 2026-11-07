@@ -5,9 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Clinic;
 use App\Models\Staff;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rules\Password as PasswordRule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class StaffController extends Controller
 {
@@ -27,7 +35,7 @@ class StaffController extends Controller
             })
             ->with(['clinic:id,name'])
             ->orderBy('name')
-            ->paginate(15);
+            ->paginate($request->integer('per_page', 15));
 
         return response()->json([
             'message' => 'Staff retrieved successfully.',
@@ -36,69 +44,145 @@ class StaffController extends Controller
     }
 
     /**
-     * Create a staff profile.
-     *
-     * A clinic owner can create a staff record for an existing user account.
-     * A staff user can create their own profile only when the supplied clinic
-     * belongs to the authenticated user; see the note below before using this
-     * flow for staff onboarding.
+     * Register a Staff user account, create its Staff profile and optionally
+     * store the profile photo. The Staff role is resolved server-side.
      */
     public function store(Request $request): JsonResponse
     {
-        $user = $request->user();
-
         $validated = $request->validate([
             'clinic_id' => [
                 'required',
                 'integer',
                 Rule::exists('clinics', 'id'),
             ],
-            'user_id' => [
-                'sometimes',
-                'integer',
-                Rule::exists('users', 'id'),
+
+            // User account registration fields.
+            'email' => [
+                'required',
+                'email',
+                'max:100',
+                'unique:users,email',
             ],
+            'phone' => [
+                'required',
+                'string',
+                'regex:/^\+?[0-9]{10,15}$/',
+                'unique:users,phone',
+            ],
+            'is_active' => ['sometimes', 'boolean'],
+
+            // Staff profile fields.
             'name' => ['required', 'string', 'max:100'],
             'job_title' => ['nullable', 'string', 'max:100'],
-            'gender' => ['nullable', 'string', 'max:30'],
-            'address' => ['nullable', 'string', 'max:500'],
+            'gender' => ['nullable', 'string', 'max:20'],
+            'dob' => ['nullable', 'date', 'before_or_equal:today'],
+            'address' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:100'],
+            'state' => ['nullable', 'string', 'max:100'],
             'country' => ['nullable', 'string', 'max:100'],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'is_active' => ['sometimes', 'boolean'],
+            'postal_code' => ['nullable', 'string', 'max:20'],
+            'profile_photo' => [
+                'sometimes',
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
         ]);
 
         $clinic = Clinic::findOrFail($validated['clinic_id']);
 
         abort_unless(
-            (int) $clinic->user_id === (int) $user->id,
+            (int) $clinic->user_id === (int) $request->user()->id,
             403,
             'You are not authorized to add staff to this clinic.'
         );
 
-        $staffUserId = (int) ($validated['user_id'] ?? $user->id);
+        // Never accept role_id from the client. A Staff registration must
+        // always receive the role configured as "staff".
+        $staffRole = Role::where('name', 'staff')->first();
 
-        $existing = Staff::where('user_id', $staffUserId)->first();
-
-        if ($existing) {
-            return response()->json([
-                'message' => 'A staff profile already exists for this user.',
-                'data' => $existing,
-            ], 409);
+        if (!$staffRole) {
+            throw ValidationException::withMessages([
+                'role_id' => [
+                    'The Staff role is not configured. Please contact the administrator.',
+                ],
+            ]);
         }
 
-        unset($validated['user_id']);
+        $photo = $request->file('profile_photo');
+        $isActive = $validated['is_active'] ?? true;
+        $storedPhotoPath = null;
 
-        $staff = Staff::create([
-            ...$validated,
-            'user_id' => $staffUserId,
-            'is_active' => $validated['is_active'] ?? true,
-        ]);
+        try {
+            $staff = DB::transaction(function () use (
+                $validated,
+                $staffRole,
+                $isActive,
+                $photo,
+                &$storedPhotoPath
+            ) {
+                // The User model's hashed cast hashes this password.
+                $staffUser = User::create([
+                    'email' => strtolower($validated['email']),
+                    'phone' => $validated['phone'],
+                    'password' => 'Staff@12345',
+                    'role_id' => $staffRole->id,
+                    'is_active' => $isActive,
+                ]);
+
+                $staff = Staff::create([
+                    'user_id' => $staffUser->id,
+                    'clinic_id' => $validated['clinic_id'],
+                    'name' => $validated['name'],
+                    'job_title' => $validated['job_title'] ?? null,
+                    'gender' => $validated['gender'] ?? null,
+                    'dob' => $validated['dob'] ?? null,
+                    'address' => $validated['address'] ?? null,
+                    'city' => $validated['city'] ?? null,
+                    'state' => $validated['state'] ?? null,
+                    'country' => $validated['country'] ?? null,
+                    'postal_code' => $validated['postal_code'] ?? null,
+                    'phone' => $staffUser->phone,
+                    'email' => $staffUser->email,
+                    'is_active' => $isActive,
+                ]);
+
+                if ($photo instanceof UploadedFile) {
+                    $storedPhotoPath = $this->storeProfilePhoto(
+                        $photo,
+                        (int) $staffUser->id,
+                        $staff->name
+                    );
+
+                    $staff->profile_photo_path = $storedPhotoPath;
+                    $staff->save();
+                }
+
+                return $staff;
+            });
+        } catch (\Throwable $exception) {
+            // Filesystem storage is not part of the database transaction.
+            // Remove the uploaded file if any database operation fails.
+            if ($storedPhotoPath) {
+                Storage::disk('public')->delete($storedPhotoPath);
+            }
+
+            throw $exception;
+        }
+
+        $staff->load('clinic:id,name');
 
         return response()->json([
-            'message' => 'Staff profile created successfully.',
-            'data' => $staff->load('clinic:id,name'),
+            'message' => 'Staff account and profile created successfully.',
+            'user' => [
+                'id' => $staff->user_id,
+                'email' => $staff->email,
+                'phone' => $staff->phone,
+                'role' => 'staff',
+                'is_active' => (bool) $isActive,
+            ],
+            'data' => $staff->fresh()->load('clinic:id,name'),
         ], 201);
     }
 
@@ -116,12 +200,10 @@ class StaffController extends Controller
     }
 
     /**
-     * Update a staff profile if the user owns it or its clinic.
+     * Update a staff profile, including photo replacement or removal.
      */
-    public function update(
-        Request $request,
-        Staff $staff
-    ): JsonResponse {
+    public function update(Request $request, Staff $staff): JsonResponse
+    {
         $this->authorizeStaffAccess($request, $staff);
 
         $validated = $request->validate([
@@ -133,13 +215,24 @@ class StaffController extends Controller
             ],
             'name' => ['sometimes', 'required', 'string', 'max:100'],
             'job_title' => ['sometimes', 'nullable', 'string', 'max:100'],
-            'gender' => ['sometimes', 'nullable', 'string', 'max:30'],
-            'address' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'gender' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'dob' => ['sometimes', 'nullable', 'date', 'before_or_equal:today', ],
+            'address' => ['sometimes', 'nullable', 'string', 'max:255'],
             'city' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'state' => ['sometimes', 'nullable', 'string', 'max:100'],
             'country' => ['sometimes', 'nullable', 'string', 'max:100'],
-            'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
-            'email' => ['sometimes', 'nullable', 'email', 'max:255'],
+            'postal_code' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'email' => ['sometimes', 'nullable', 'email', 'max:100'],
             'is_active' => ['sometimes', 'boolean'],
+            'profile_photo' => [
+                'sometimes',
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
+            'remove_profile_photo' => ['sometimes', 'boolean'],
         ]);
 
         if (isset($validated['clinic_id'])) {
@@ -163,7 +256,52 @@ class StaffController extends Controller
             );
         }
 
-        $staff->update($validated);
+        $photo = $request->file('profile_photo');
+        $removePhoto = (bool) ($validated['remove_profile_photo'] ?? false);
+        $oldPath = $staff->profile_photo_path;
+        $newName = $validated['name'] ?? $staff->name;
+
+        unset(
+            $validated['profile_photo'],
+            $validated['remove_profile_photo']
+        );
+
+        $newPath = null;
+
+        if ($photo instanceof UploadedFile) {
+            $newPath = $this->storeProfilePhoto(
+                $photo,
+                (int) $staff->user_id,
+                $newName
+            );
+            $validated['profile_photo_path'] = $newPath;
+        } elseif ($removePhoto) {
+            $validated['profile_photo_path'] = null;
+        } elseif ($oldPath && $newName !== $staff->name) {
+            // Keep the filename consistent with the updated staff name.
+            $newPath = $this->renameExistingPhoto(
+                $oldPath,
+                (int) $staff->user_id,
+                $newName
+            );
+
+            if ($newPath) {
+                $validated['profile_photo_path'] = $newPath;
+            }
+        }
+
+        try {
+            $staff->update($validated);
+        } catch (\Throwable $exception) {
+            if ($newPath && $newPath !== $oldPath) {
+                Storage::disk('public')->delete($newPath);
+            }
+            throw $exception;
+        }
+
+        if ($oldPath && $oldPath !== $staff->profile_photo_path) {
+            Storage::disk('public')->delete($oldPath);
+        }
 
         return response()->json([
             'message' => 'Staff profile updated successfully.',
@@ -172,18 +310,26 @@ class StaffController extends Controller
     }
 
     /**
-     * Delete a staff profile. Only its clinic owner may delete it.
+     * Delete a staff profile.
+     *
+     * This endpoint should be restricted to OolaSystems SuperAdmin.
+     * The authorization policy/middleware for that role should be enforced
+     * before enabling this operation.
      */
-    public function destroy(
-        Request $request,
-        Staff $staff
-    ): JsonResponse {
+    public function destroy(Request $request, Staff $staff): JsonResponse
+    {
+        $role = $request->user()->role;
+        $roleName = is_string($role) ? $role : ($role?->name ?? null);
+
         abort_unless(
-            $staff->clinic &&
-            (int) $staff->clinic->user_id === (int) $request->user()->id,
+            $roleName === 'superadmin',
             403,
-            'Only the clinic owner can delete this staff profile.'
+            'Only OolaSystems SuperAdmin can delete staff profiles.'
         );
+
+        if ($staff->profile_photo_path) {
+            Storage::disk('public')->delete($staff->profile_photo_path);
+        }
 
         $staff->delete();
 
@@ -212,6 +358,80 @@ class StaffController extends Controller
             'next_step' => 'dashboard',
             'data' => $staff->load('clinic:id,name'),
         ]);
+    }
+
+    private function storeProfilePhoto(
+        UploadedFile $photo,
+        int $userId,
+        string $name
+    ): string {
+        $extension = strtolower($photo->extension() ?: 'jpg');
+
+        if ($extension === 'jpeg') {
+            $extension = 'jpg';
+        }
+
+        abort_unless(
+            in_array($extension, ['jpg', 'png', 'webp'], true),
+            422,
+            'Only JPG, PNG or WebP profile photos are supported.'
+        );
+
+        $slug = Str::slug($name);
+        $slug = $slug !== '' ? $slug : 'staff';
+
+        $filename = $userId . '-' . $slug . '.' . $extension;
+        $directory = 'profiles/staffs';
+
+        $storedPath = $photo->storeAs(
+            $directory,
+            $filename,
+            'public'
+        );
+
+        if (!$storedPath) {
+            throw new \RuntimeException('Unable to store the staff profile photo.');
+        }
+
+        return $storedPath;
+    }
+
+    private function renameExistingPhoto(
+        string $oldPath,
+        int $userId,
+        string $name
+    ): ?string {
+        $disk = Storage::disk('public');
+
+        if (!$disk->exists($oldPath)) {
+            return null;
+        }
+
+        $extension = strtolower(pathinfo($oldPath, PATHINFO_EXTENSION));
+
+        if ($extension === 'jpeg') {
+            $extension = 'jpg';
+        }
+
+        if (!in_array($extension, ['jpg', 'png', 'webp'], true)) {
+            return null;
+        }
+
+        $slug = Str::slug($name);
+        $slug = $slug !== '' ? $slug : 'staff';
+
+        $newPath = 'profiles/staffs/' . $userId . '-' . $slug . '.' . $extension;
+
+        if ($newPath === $oldPath) {
+            return $oldPath;
+        }
+
+        if ($disk->exists($newPath)) {
+            $disk->delete($newPath);
+        }
+
+        // Copy first; the old file is deleted only after the database update succeeds.
+        return $disk->copy($oldPath, $newPath) ? $newPath : null;
     }
 
     private function authorizeStaffAccess(

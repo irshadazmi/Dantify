@@ -18,7 +18,7 @@ import type { FieldError } from 'react-hook-form';
 type AddressFieldName = keyof AddressFormValues;
 
 type Props<T extends AddressFormValues> = {
-  control: Control<T>;
+  control: Control<T, any, any>;
   errors: FieldErrors<T>;
   trigger: UseFormTrigger<T>;
   saving?: boolean;
@@ -30,37 +30,37 @@ const fields: {
   placeholder: string;
   autoCapitalize: 'sentences' | 'words' | 'characters';
 }[] = [
-  {
-    name: 'address',
-    label: 'Address',
-    placeholder: 'Street / Area',
-    autoCapitalize: 'sentences',
-  },
-  {
-    name: 'city',
-    label: 'City',
-    placeholder: 'Enter city',
-    autoCapitalize: 'words',
-  },
-  {
-    name: 'state',
-    label: 'State / Province',
-    placeholder: 'Enter state or province',
-    autoCapitalize: 'words',
-  },
-  {
-    name: 'country',
-    label: 'Country',
-    placeholder: 'Enter country',
-    autoCapitalize: 'words',
-  },
-  {
-    name: 'postal_code',
-    label: 'Postal Code / PIN',
-    placeholder: 'Enter postal code',
-    autoCapitalize: 'characters',
-  },
-];
+    {
+      name: 'address',
+      label: 'Address',
+      placeholder: 'Street / Area',
+      autoCapitalize: 'sentences',
+    },
+    {
+      name: 'city',
+      label: 'City',
+      placeholder: 'Enter city',
+      autoCapitalize: 'words',
+    },
+    {
+      name: 'state',
+      label: 'State / Province',
+      placeholder: 'Enter state or province',
+      autoCapitalize: 'words',
+    },
+    {
+      name: 'country',
+      label: 'Country',
+      placeholder: 'Enter country',
+      autoCapitalize: 'words',
+    },
+    {
+      name: 'postal_code',
+      label: 'Postal Code / PIN',
+      placeholder: 'Enter postal code',
+      autoCapitalize: 'characters',
+    },
+  ];
 
 export default function AddressFields<T extends AddressFormValues>({
   control,
@@ -75,13 +75,13 @@ export default function AddressFields<T extends AddressFormValues>({
       {fields.map((item) => {
         const fieldName = item.name as keyof T;
         const error = errors[fieldName as keyof typeof errors] as
-        | FieldError
-        | undefined;
+          | FieldError
+          | undefined;
 
         return (
           <View key={item.name} style={{ marginBottom: 8 }}>
             <InlineField label={item.label}>
-              <Controller
+              <Controller<T, any, any>
                 control={control}
                 name={fieldName as any}
                 render={({ field }) => (

@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Clinic;
-use App\Models\ClinicService;
-use App\Models\Service;
+use App\Models\ClinicServiceOffering;
+use App\Models\DentalService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +13,56 @@ use Illuminate\Validation\Rule;
 
 class ClinicServiceController extends Controller
 {
+    /**
+     * List active services offered by a clinic.
+     * Public endpoint used by the patient booking flow.
+     */
+    public function publicIndex(
+        Request $request,
+        Clinic $clinic
+    ): JsonResponse {
+        abort_unless(
+            $clinic->is_active,
+            404,
+            'Clinic not found or inactive.'
+        );
+
+        $validated = $request->validate([
+            'search' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $offerings = ClinicServiceOffering::query()
+            ->with([
+                'dentalService:id,name,description,is_active',
+            ])
+            ->where('clinic_id', $clinic->id)
+            ->where('is_active', true)
+            ->whereHas('dentalService', function ($query) {
+                $query->where('is_active', true);
+            })
+            ->when(
+                !empty($validated['search']),
+                function ($query) use ($validated) {
+                    $search = $validated['search'];
+
+                    $query->whereHas(
+                        'dentalService',
+                        function ($q) use ($search) {
+                            $q->where('name', 'like', "%{$search}%");
+                        }
+                    );
+                }
+            )
+            ->orderBy('id')
+            ->paginate($validated['per_page'] ?? 50);
+
+        return response()->json([
+            'message' => 'Clinic services retrieved successfully.',
+            'data' => $offerings,
+        ]);
+    }
+    
     /**
      * Resolve and authorize the authenticated clinic.
      */
@@ -42,9 +92,9 @@ class ClinicServiceController extends Controller
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $services = ClinicService::query()
+        $offerings = ClinicServiceOffering::query()
             ->with([
-                'service:id,name,description,is_active',
+                'dentalService:id,name,description,is_active',
             ])
             ->where('clinic_id', $clinic->id)
             ->when(
@@ -52,7 +102,7 @@ class ClinicServiceController extends Controller
                 function ($query) use ($validated) {
                     $search = $validated['search'];
 
-                    $query->whereHas('service', function ($q) use ($search) {
+                    $query->whereHas('dentalService', function ($q) use ($search) {
                         $q->where('name', 'like', "%{$search}%");
                     });
                 }
@@ -64,20 +114,20 @@ class ClinicServiceController extends Controller
                     $validated['is_active']
                 )
             )
-            ->orderBy('id', 'desc')
+            ->orderByDesc('id')
             ->paginate($validated['per_page'] ?? 15);
 
         return response()->json([
-            'message' => 'Clinic services retrieved successfully.',
-            'data' => $services,
+            'message' => 'Clinic service offerings retrieved successfully.',
+            'data' => $offerings,
         ]);
     }
 
     /**
-     * Browse active master services not yet added by this clinic.
+     * Browse active master dental services not yet added by this clinic.
      *
-     * The master price and duration are provided as defaults
-     * when the clinic adds a service.
+     * Master price and duration are used as defaults when
+     * the clinic adds a service.
      */
     public function catalogue(Request $request): JsonResponse
     {
@@ -88,9 +138,9 @@ class ClinicServiceController extends Controller
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $services = Service::query()
+        $services = DentalService::query()
             ->where('is_active', true)
-            ->whereDoesntHave('clinicServices', function ($query) use ($clinic) {
+            ->whereDoesntHave('clinicServiceOfferings', function ($query) use ($clinic) {
                 $query->where('clinic_id', $clinic->id);
             })
             ->when(
@@ -112,26 +162,28 @@ class ClinicServiceController extends Controller
             ->paginate($validated['per_page'] ?? 15);
 
         return response()->json([
-            'message' => 'Available service catalogue retrieved successfully.',
+            'message' => 'Available dental service catalogue retrieved successfully.',
             'data' => $services,
         ]);
     }
 
     /**
-     * Add a master catalogue service to the clinic.
+     * Add a master dental service to the clinic.
      */
     public function store(Request $request): JsonResponse
     {
         $clinic = $this->getAuthorizedClinic($request);
 
         $validated = $request->validate([
-            'service_id' => [
+            'dental_service_id' => [
                 'required',
                 'integer',
-                Rule::exists('services', 'id')
+                Rule::exists('dental_services', 'id')
                     ->where('is_active', true),
-                Rule::unique('clinic_services', 'service_id')
-                    ->where('clinic_id', $clinic->id),
+                Rule::unique(
+                    'clinic_service_offerings',
+                    'dental_service_id'
+                )->where('clinic_id', $clinic->id),
             ],
             'price' => [
                 'sometimes',
@@ -148,49 +200,51 @@ class ClinicServiceController extends Controller
             ],
         ]);
 
-        $service = Service::findOrFail($validated['service_id']);
+        $dentalService = DentalService::findOrFail(
+            $validated['dental_service_id']
+        );
 
-        $clinicService = DB::transaction(function () use (
+        $offering = DB::transaction(function () use (
             $clinic,
-            $service,
+            $dentalService,
             $validated
         ) {
-            return ClinicService::create([
+            return ClinicServiceOffering::create([
                 'clinic_id' => $clinic->id,
-                'service_id' => $service->id,
+                'dental_service_id' => $dentalService->id,
 
                 // Use master values as initial defaults.
-                'price' => $validated['price'] ?? $service->price,
+                'price' => $validated['price'] ?? $dentalService->price,
                 'duration_minutes' => $validated['duration_minutes']
-                    ?? $service->duration_minutes,
+                    ?? $dentalService->duration_minutes,
 
                 'is_active' => true,
             ]);
         });
 
-        $clinicService->load('service');
+        $offering->load('dentalService');
 
         return response()->json([
-            'message' => 'Service added to clinic successfully.',
-            'data' => $clinicService,
+            'message' => 'Dental service added to clinic successfully.',
+            'data' => $offering,
         ], 201);
     }
 
     /**
      * Update clinic-specific price and duration.
      *
-     * The service_id and clinic_id cannot be changed here.
+     * The dental_service_id and clinic_id cannot be changed here.
      */
     public function update(
         Request $request,
-        ClinicService $clinicService
+        ClinicServiceOffering $clinicService
     ): JsonResponse {
         $clinic = $this->getAuthorizedClinic($request);
 
         abort_unless(
-            $clinicService->clinic_id === $clinic->id,
+            (int) $clinicService->clinic_id === (int) $clinic->id,
             404,
-            'Clinic service not found.'
+            'Clinic service offering not found.'
         );
 
         $validated = $request->validate([
@@ -212,8 +266,8 @@ class ClinicServiceController extends Controller
         $clinicService->update($validated);
 
         return response()->json([
-            'message' => 'Clinic service updated successfully.',
-            'data' => $clinicService->fresh()->load('service'),
+            'message' => 'Clinic service offering updated successfully.',
+            'data' => $clinicService->fresh()->load('dentalService'),
         ]);
     }
 
@@ -222,14 +276,14 @@ class ClinicServiceController extends Controller
      */
     public function updateStatus(
         Request $request,
-        ClinicService $clinicService
+        ClinicServiceOffering $clinicService
     ): JsonResponse {
         $clinic = $this->getAuthorizedClinic($request);
 
         abort_unless(
-            $clinicService->clinic_id === $clinic->id,
+            (int) $clinicService->clinic_id === (int) $clinic->id,
             404,
-            'Clinic service not found.'
+            'Clinic service offering not found.'
         );
 
         $validated = $request->validate([
@@ -241,8 +295,8 @@ class ClinicServiceController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Clinic service status updated successfully.',
-            'data' => $clinicService->fresh()->load('service'),
+            'message' => 'Clinic service offering status updated successfully.',
+            'data' => $clinicService->fresh()->load('dentalService'),
         ]);
     }
 }

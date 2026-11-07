@@ -10,7 +10,7 @@ class TreatmentPlanService extends Model
     protected $fillable = [
         'quantity',
         'price',
-        'service_id',
+        'clinic_service_offering_id',
         'treatment_plan_id',
     ];
 
@@ -22,9 +22,9 @@ class TreatmentPlanService extends Model
         ];
     }
 
-    public function service(): BelongsTo
+    public function clinicServiceOffering(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(ClinicServiceOffering::class);
     }
 
     public function treatmentPlan(): BelongsTo

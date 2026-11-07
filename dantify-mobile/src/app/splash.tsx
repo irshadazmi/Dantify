@@ -29,7 +29,7 @@ export default function SplashScreen() {
       try {
         // Preserve the existing intro-screen behavior.
         const flag = await AsyncStorage.getItem("hasSeenIntro");
-        console.log("hasSeenInto: "+flag);
+
 
         if (cancelled) {
           return;

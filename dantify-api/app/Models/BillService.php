@@ -13,7 +13,7 @@ class BillService extends Model
     protected $fillable = [
         'quantity',
         'price',
-        'service_id',
+        'clinic_service_offering_id',
         'bill_id',
     ];
 
@@ -31,16 +31,17 @@ class BillService extends Model
     /**
      * Bill to which this service belongs.
      */
-    public function bill(): BelongsTo
+   public function bill(): BelongsTo
     {
         return $this->belongsTo(Bill::class);
     }
 
+
     /**
-     * Service associated with this bill item.
+     * Dental Service associated with this bill item.
      */
-    public function service(): BelongsTo
+    public function clinicServiceOffering(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(ClinicServiceOffering::class);
     }
 }

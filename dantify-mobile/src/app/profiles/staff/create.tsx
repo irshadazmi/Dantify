@@ -1,239 +1,156 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  View,
-} from 'react-native';
+import { ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import StaffForm, {
-  type StaffFormValues,
-} from '@/components/forms/staff-form';
-
+import StaffForm, { type StaffFormValues } from '@/components/forms/staff-form';
 import staffService from '@/services/staff-service';
-
-import type {
-  Staff,
-  StaffCreatePayload,
-  StaffUpdatePayload,
-} from '@/types/staff';
+import clinicService from '@/services/clinic-service';
+import type { StaffCreatePayload } from '@/types/staff';
 
 import { AppText } from '@/components/ui/app-text';
-import { useAppColors } from '@/hooks/use-app-colors';
+import { ScreenHeader } from '@/components/ui/screen-header';
 import { useStyles } from '@/styles/styles';
-
-interface ApiErrorResponse {
-  message?: string;
-  errors?: Record<string, string[]>;
-  next_step?: string;
-}
-
-function toFormValues(staff?: Staff | null): StaffFormValues {
-  return {
-    name: staff?.name ?? '',
-    job_title: staff?.job_title ?? '',
-    gender: staff?.gender ?? '',
-    address: staff?.address ?? '',
-    city: staff?.city ?? '',
-    country: staff?.country ?? '',
-    phone: staff?.phone ?? '',
-    email: staff?.email ?? '',
-  };
-}
 
 function toPayload(
   values: StaffFormValues,
-  clinicId: number
+  clinicId: number,
 ): StaffCreatePayload {
   return {
     clinic_id: clinicId,
     name: values.name.trim(),
-    job_title: values.job_title.trim() || null,
-    gender: values.gender || null,
-    address: values.address.trim() || null,
-    city: values.city.trim() || null,
-    country: values.country.trim() || null,
+    job_title: values.job_title.trim(),
+    gender: values.gender.trim() || null,
+    dob: values.dob.trim(),
+    address: values.address.trim(),
+    city: values.city.trim(),
+    state: values.state.trim(),
+    country: values.country.trim(),
+    postal_code: values.postal_code.trim(),
     phone: values.phone.trim() || null,
-    email: values.email.trim() || null,
+    email: values.email.trim().toLowerCase() || null,
+    profile_photo: values.profilePhoto,
   };
 }
 
-function getErrorMessage(error: unknown): string {
-  const responseData = (
-    error as {
-      response?: { data?: ApiErrorResponse };
-    }
-  )?.response?.data;
-
-  if (responseData?.errors) {
-    return Object.values(responseData.errors)
-      .flat()
-      .join('\n');
-  }
-
-  return (
-    responseData?.message ??
-    'Unable to save the staff profile. Please try again.'
-  );
-}
-
-interface StaffProfileScreenProps {
-  /**
-   * Supply the clinic ID from trusted application context.
-   * For a staff user's own profile, the backend should determine
-   * clinic association from the authenticated account.
-   */
-  clinicId?: number;
-}
-
-export default function CreateStaffProfileScreen({
-  clinicId,
-}: StaffProfileScreenProps) {
-  const router = useRouter();
-  const colors = useAppColors();
+export default function CreateStaffProfile() {
   const styles = useStyles();
+  const router = useRouter();
 
-  const [staff, setStaff] = useState<Staff | null>(null);
-  const [formValues, setFormValues] = useState<StaffFormValues>(
-    toFormValues()
-  );
-  const [loading, setLoading] = useState(true);
+  const [clinicId, setClinicId] = useState<number | null>(null);
+  const [clinicLoading, setClinicLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const loadProfile = useCallback(async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const response = await staffService.getMyProfile();
-
-      const profile = response.data ?? null;
-
-      setStaff(profile);
-      setFormValues(toFormValues(profile));
-    } catch (err) {
-      const responseData = (
-        err as {
-          response?: { status?: number; data?: ApiErrorResponse };
-        }
-      )?.response;
-
-      // The backend uses 404 to indicate that the profile
-      // does not exist yet.
-      if (
-        responseData?.status === 404 &&
-        responseData.data?.next_step === 'create_profile'
-      ) {
-        setStaff(null);
-        setFormValues(toFormValues());
-      } else {
-        setError(getErrorMessage(err));
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // Retrieve the clinic associated with the authenticated administrator.
   useEffect(() => {
-    void loadProfile();
-  }, [loadProfile]);
+    let mounted = true;
 
-  const handleFormChange = useCallback(
-    (values: StaffFormValues) => {
-      setFormValues(values);
-    },
-    []
-  );
-
-  const handleSubmit = useCallback(
-    async (values: StaffFormValues) => {
-      setSaving(true);
-      setError('');
-
+    const loadClinic = async () => {
       try {
-        let savedStaff: Staff;
+        setClinicLoading(true);
+        setError(null);
 
-        if (staff) {
-          const payload: StaffUpdatePayload = {
-            name: values.name.trim(),
-            job_title: values.job_title.trim() || null,
-            gender: values.gender || null,
-            address: values.address.trim() || null,
-            city: values.city.trim() || null,
-            country: values.country.trim() || null,
-            phone: values.phone.trim() || null,
-            email: values.email.trim() || null,
-          };
+        const response = await clinicService.getMyProfile();
+        const rawClinicId = response.data?.id;
+        const id = Number(rawClinicId);
 
-          savedStaff = await staffService.update(staff.id, payload);
-        } else {
-          if (!clinicId) {
-            setError(
-              'A clinic association is required to create a staff profile. ' +
-                'Please open this form through the appropriate clinic workflow.'
-            );
-            return;
-          }
+        if (
+          rawClinicId === null ||
+          rawClinicId === undefined ||
+          String(rawClinicId).trim() === '' ||
+          !Number.isSafeInteger(id) ||
+          id <= 0
+        ) {
+          throw new Error('No valid clinic profile was found.');
+        }
 
-          savedStaff = await staffService.create(
-            toPayload(values, clinicId)
+        if (mounted) {
+          setClinicId(id);
+        }
+      } catch (err: any) {
+        if (mounted) {
+          setError(
+            err?.response?.data?.message ||
+            err?.message ||
+            'Unable to retrieve your clinic profile.',
           );
         }
-
-        setStaff(savedStaff);
-        router.replace('/dashboard' as never);
-      } catch (err) {
-        setError(getErrorMessage(err));
       } finally {
-        setSaving(false);
+        if (mounted) {
+          setClinicLoading(false);
+        }
       }
-    },
-    [clinicId, router, staff]
-  );
+    };
 
-  if (loading) {
-    return (
-      <View
-        style={[
-          styles.container,
-          {
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-          },
-        ]}
-      >
-        <ActivityIndicator size="large" color={colors.primary} />
-        <AppText>Loading staff profile...</AppText>
-      </View>
-    );
-  }
+    loadClinic();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleSubmit = useCallback(async (values: StaffFormValues) => {
+    if (saving || clinicId === null) return;
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await staffService.create(toPayload(values, clinicId));
+
+      router.replace('/profiles/staff' as never);
+    } catch (err: any) {
+      const data = err?.response?.data;
+
+      const validationErrors = data?.errors
+        ? Object.values(data.errors).flat().join('\n')
+        : null;
+
+      setError(
+        validationErrors ||
+        data?.message ||
+        'Unable to create the staff profile. Please try again.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  }, [clinicId, router, saving]);
 
   return (
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={{ paddingBottom: 32 }}
+      style={styles.profileScroll}
+      contentContainerStyle={styles.profileFormScrollContent}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      automaticallyAdjustKeyboardInsets
     >
-      <View style={{ padding: 16, gap: 16 }}>
-        <AppText>
-          {staff ? 'Update Staff Profile' : 'Create Staff Profile'}
+      <ScreenHeader
+        title="Create Staff Profile"
+        subtitle="Add your professional details and profile photo."
+        showBack
+        onBack={() => router.back()}
+      />
+
+      {error ? (
+        <AppText variant="error" style={styles.profileFormError}>
+          {error}
         </AppText>
+      ) : null}
 
-        {error ? (
-          <AppText>{error}</AppText>
-        ) : null}
-
+      {clinicLoading ? (
+        <ActivityIndicator style={{ marginTop: 24 }} />
+      ) : clinicId === null ? (
+        <AppText variant="error" style={styles.profileFormError}>
+          A valid clinic profile is required before creating staff.
+        </AppText>
+      ) : (
         <StaffForm
-          initialValues={formValues}
-          user_id={staff?.user_id}
-          onChange={handleFormChange}
+          onChange={() => undefined}
           onSubmit={handleSubmit}
           saving={saving}
         />
-      </View>
+      )}
     </ScrollView>
   );
 }

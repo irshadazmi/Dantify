@@ -1,4 +1,3 @@
-
 import api from '@/config/api';
 
 import type {
@@ -10,11 +9,20 @@ import type {
   RespondToInvitePayload,
 } from '@/types/clinic-dentist-invite';
 
+import type { PaginationParams } from '@/types/api';
+
+/* ======================================================
+   CLINIC-DENTIST INVITATION SERVICE
+====================================================== */
+
 const clinicDentistInviteService = {
-  /**
-   * Clinic initiates an invitation to a dentist.
-   * POST /clinics/{clinicId}/dentist-invites
-   */
+
+  /* ====================================================
+     CLINIC INVITES DENTIST
+
+     POST /clinics/{clinicId}/dentist-invites
+  ==================================================== */
+
   async inviteDentist(
     clinicId: number,
     payload: CreateClinicInvitePayload,
@@ -27,10 +35,12 @@ const clinicDentistInviteService = {
     return response.data.data;
   },
 
-  /**
-   * Dentist initiates an invitation to a clinic.
-   * POST /dentists/{dentistId}/clinic-invites
-   */
+  /* ====================================================
+     DENTIST INVITES CLINIC
+
+     POST /dentists/{dentistId}/clinic-invites
+  ==================================================== */
+
   async inviteClinic(
     dentistId: number,
     payload: CreateDentistInvitePayload,
@@ -43,40 +53,60 @@ const clinicDentistInviteService = {
     return response.data.data;
   },
 
-  /**
-   * Get invitations for the authenticated dentist.
-   * GET /my/dentist-invites
-   */
+  /* ====================================================
+     GET DENTIST INVITATIONS
+
+     GET /my/dentist-invites
+  ==================================================== */
+
   async getMyDentistInvites(
-    page = 1,
+    params: PaginationParams = {},
   ): Promise<ClinicDentistInviteListResponse> {
     const response = await api.get<ClinicDentistInviteListResponse>(
       '/my/dentist-invites',
-      { params: { page } },
+      {
+        params: {
+          page: params.page ?? 1,
+          ...(params.per_page !== undefined
+            ? { per_page: params.per_page }
+            : {}),
+        },
+      },
     );
 
     return response.data;
   },
 
-  /**
-   * Get invitations for the authenticated clinic.
-   * GET /my/clinic-dentist-invites
-   */
+  /* ====================================================
+     GET CLINIC INVITATIONS
+
+     GET /my/clinic-dentist-invites
+  ==================================================== */
+
   async getMyClinicInvites(
-    page = 1,
+    params: PaginationParams = {},
   ): Promise<ClinicDentistInviteListResponse> {
     const response = await api.get<ClinicDentistInviteListResponse>(
       '/my/clinic-dentist-invites',
-      { params: { page } },
+      {
+        params: {
+          page: params.page ?? 1,
+          ...(params.per_page !== undefined
+            ? { per_page: params.per_page }
+            : {}),
+        },
+      },
     );
 
     return response.data;
   },
 
-  /**
-   * Accept or decline a pending invitation.
-   * PATCH /dentist-invites/{inviteId}/respond
-   */
+  /* ====================================================
+     RESPOND TO INVITATION
+
+     PATCH /dentist-invites/{inviteId}/respond
+  ==================================================== */
+
   async respondToInvite(
     inviteId: number,
     payload: RespondToInvitePayload,
@@ -89,5 +119,9 @@ const clinicDentistInviteService = {
     return response.data.data;
   },
 };
+
+/* ======================================================
+   EXPORT
+====================================================== */
 
 export default clinicDentistInviteService;

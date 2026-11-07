@@ -1,10 +1,24 @@
+import type {
+  ApiResponse,
+  PaginatedApiResponse,
+} from './api';
+
+/* ======================================================
+   ENUMS / UNION TYPES
+====================================================== */
 
 export type ClinicDentistInviteStatus =
   | 'pending'
   | 'accepted'
   | 'declined';
 
-export type ClinicDentistInviteResponse = 'accept' | 'decline';
+export type ClinicDentistInviteAction =
+  | 'accept'
+  | 'decline';
+
+/* ======================================================
+   RELATED ENTITY SUMMARIES
+====================================================== */
 
 export interface InviteClinicSummary {
   id: number;
@@ -30,6 +44,10 @@ export interface InviteDentistSummary {
   country?: string | null;
 }
 
+/* ======================================================
+   CLINIC-DENTIST INVITATION
+====================================================== */
+
 export interface ClinicDentistInvite {
   id: number;
   clinic_id: number;
@@ -40,41 +58,42 @@ export interface ClinicDentistInvite {
   responded_at: string | null;
   created_at: string;
   updated_at: string;
+
   clinic?: InviteClinicSummary;
   dentist?: InviteDentistSummary;
 }
 
-export interface ClinicDentistInviteApiResponse {
-  message: string;
-  data: ClinicDentistInvite;
-}
+/* ======================================================
+   CREATE / RESPOND PAYLOADS
+====================================================== */
 
-export interface ClinicDentistInviteListResponse {
-  message: string;
-  data: {
-    current_page: number;
-    data: ClinicDentistInvite[];
-    first_page_url?: string | null;
-    from?: number | null;
-    last_page: number;
-    last_page_url?: string | null;
-    next_page_url?: string | null;
-    path?: string;
-    per_page: number;
-    prev_page_url?: string | null;
-    to?: number | null;
-    total: number;
-  };
-}
-
+/**
+ * Payload for a clinic inviting a dentist.
+ */
 export interface CreateClinicInvitePayload {
   dentist_id: number;
 }
 
+/**
+ * Payload for a dentist inviting a clinic.
+ */
 export interface CreateDentistInvitePayload {
   clinic_id: number;
 }
 
+/**
+ * Payload for accepting or declining an invitation.
+ */
 export interface RespondToInvitePayload {
-  response: ClinicDentistInviteResponse;
+  response: ClinicDentistInviteAction;
 }
+
+/* ======================================================
+   API RESPONSE TYPES
+====================================================== */
+
+export type ClinicDentistInviteApiResponse =
+  ApiResponse<ClinicDentistInvite>;
+
+export type ClinicDentistInviteListResponse =
+  PaginatedApiResponse<ClinicDentistInvite>;

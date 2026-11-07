@@ -11,6 +11,7 @@ class Medicine extends Model
         'name',
         'generic_name',
         'brand_name',
+        'composition',
         'strength',
         'dosage_form',
         'manufacturer',

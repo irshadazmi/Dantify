@@ -1,6 +1,13 @@
-/* src/types/auth.ts */
+import type { ApiResponse } from './api';
 
-/** Role names returned by the API. Keep this open to support server-managed roles. */
+/* ======================================================
+   ROLE TYPES
+====================================================== */
+
+/**
+ * Role names returned by the API.
+ * Open-ended to support future server-managed roles.
+ */
 export type RoleName =
   | 'superadmin'
   | 'clinic'
@@ -16,13 +23,19 @@ export interface AuthRole {
   description?: string | null;
 }
 
+/* ======================================================
+   USER TYPES
+====================================================== */
+
 export interface AuthUser {
   id: number;
   email: string;
   phone: string | null;
   role_id: number;
-  /** Laravel normally returns the related role object. */
+
+  /** Laravel may return the role as a related object or role name. */
   role: AuthRole | RoleName;
+
   is_active: boolean;
   email_verified_at?: string | null;
   created_at?: string;
@@ -31,35 +44,54 @@ export interface AuthUser {
 
 export type AuthToken = string;
 
+export type AuthNextStep =
+  | 'create_profile'
+  | 'complete_profile'
+  | 'dashboard'
+  | (string & {});
+
+/* ======================================================
+   LOGIN
+====================================================== */
+
 export interface LoginRequest {
   email: string;
   password: string;
   device_name?: string;
 }
 
-export interface LoginProfile {
+/**
+ * Profile completion information returned during login.
+ * The actual profile structure depends on the user's role.
+ */
+export interface LoginProfile<T = unknown> {
   required: boolean;
   exists: boolean;
-  data: unknown | null;
-  next_step?: string;
+  data: T | null;
+  next_step?: AuthNextStep;
 }
 
 export interface LoginResponse {
-  message?: string;
   user: AuthUser;
   profile?: LoginProfile | null;
-  next_step?: 'create_profile' | 'dashboard' | string;
+  next_step?: AuthNextStep;
   token: AuthToken;
   token_type?: string;
 }
 
-/** Only roles allowed to register through the public mobile registration flow. */
+/* ======================================================
+   REGISTRATION
+====================================================== */
+
+/**
+ * Roles permitted through public mobile registration.
+ */
 export type PublicRegistrationRole =
-  | "clinic"
-  | "dentist"
-  | "staff"
-  | "laboratory"
-  | "patient";
+  | 'clinic'
+  | 'dentist'
+  | 'staff'
+  | 'laboratory'
+  | 'patient';
 
 export interface RegisterRequest {
   email: string;
@@ -67,24 +99,32 @@ export interface RegisterRequest {
   password: string;
   password_confirmation: string;
   role: PublicRegistrationRole;
-  /** Proof returned by the server after successful OTP verification. */
+
+  /** Proof returned after successful OTP verification. */
   verification_token: string;
+
   device_name?: string;
 }
 
-/** Registration is expected to return a token and user so the context can sign in immediately. */
+/**
+ * Registration response.
+ * Registration may return an authenticated user and token.
+ */
 export interface RegisterResponse extends LoginResponse {
-  next_step?: 'complete_profile' | string;
+  next_step?: AuthNextStep;
 }
+
+/* ======================================================
+   OTP VERIFICATION
+====================================================== */
 
 export interface OtpSendRequest {
   phone: string;
 }
 
-export interface OtpSendResponse {
-  message: string;
+export type OtpSendResponse = ApiResponse<{
   expires_in?: number;
-}
+}>;
 
 export interface OtpVerifyRequest {
   phone: string;
@@ -97,10 +137,18 @@ export interface OtpVerifyResponse {
   expires_in?: number;
 }
 
+/* ======================================================
+   USER ACCOUNT
+====================================================== */
+
 export interface UpdateUserRequest {
   email?: string;
   phone?: string | null;
 }
+
+/* ======================================================
+   PASSWORD MANAGEMENT
+====================================================== */
 
 export interface ForgotPasswordRequest {
   email: string;
@@ -113,5 +161,16 @@ export interface ResetPasswordRequest {
   password_confirmation: string;
 }
 
-/** Common response shape used by endpoints that return either a user or { user }. */
-export type UserResponse = AuthUser | { user: AuthUser };
+/* ======================================================
+   API RESPONSE TYPES
+====================================================== */
+
+export type LoginApiResponse = ApiResponse<LoginResponse>;
+
+export type RegisterApiResponse = ApiResponse<RegisterResponse>;
+
+export type UserResponse = AuthUser | {
+  user: AuthUser;
+};
+
+export type UserApiResponse = ApiResponse<UserResponse>;

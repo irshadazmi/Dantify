@@ -11,7 +11,7 @@ import ClinicForm, {
   type ClinicFormValues,
 } from '@/components/forms/clinic-form';
 
-import clinicService from '@/services/clinic-service';
+import clinicService from '@/services/clinic-service-service';
 
 import type {
   Clinic,

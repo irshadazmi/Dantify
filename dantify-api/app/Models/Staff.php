@@ -13,8 +13,8 @@ class Staff extends Model
     protected $appends = [
         'profile_photo_url',
     ];
-    
-    protected $table = 'staff';
+
+    protected $table = 'staffs';
 
     protected $fillable = [
         'user_id',
@@ -22,6 +22,7 @@ class Staff extends Model
         'name',
         'job_title',
         'gender',
+        'dob',
         'address',
         'city',
         'state',
@@ -36,6 +37,7 @@ class Staff extends Model
     protected function casts(): array
     {
         return [
+            'dob' => 'date:Y-m-d',
             'is_active' => 'boolean',
         ];
     }

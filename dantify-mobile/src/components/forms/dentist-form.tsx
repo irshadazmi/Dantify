@@ -21,7 +21,7 @@ const GENDERS = ['Male', 'Female', 'Other'] as const;
 export type DentistPhotoSelection = {
   uri: string;
   name: string;
-  type: string;
+  type: 'image/jpeg' | 'image/png' | 'image/webp';
 };
 
 export type DentistFormValues = {
@@ -51,7 +51,7 @@ type Props = {
 };
 
 const DentistSchema = z.object({
-  name: z.string().trim().min(1, 'Dentist name is required').max(150, 'Name cannot exceed 150 characters'),
+  name: z.string().trim().min(1, 'Dentist name is required').max(100, 'Name cannot exceed 100 characters'),
   gender: z.string().refine(
     (value) => value === '' || GENDERS.includes(value as (typeof GENDERS)[number]),
     'Select a valid gender',
@@ -69,10 +69,37 @@ const DentistSchema = z.object({
     (value) => value === '' || z.string().email().safeParse(value).success,
     'Enter a valid email address',
   ).max(254, 'Email address is too long'),
-  specialization: z.string().trim().max(150, 'Specialization cannot exceed 150 characters'),
-  profilePhoto: z.custom<DentistPhotoSelection | null>().nullable(),
+  specialization: z.string().trim().max(255, 'Specialization cannot exceed 255 characters'),
+  profilePhoto: z.object({
+    uri: z.string().min(1, 'Invalid photo URI'),
+    name: z.string().min(1, 'Photo filename is required'),
+    type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  }).nullable(),
   removeProfilePhoto: z.boolean(),
 });
+
+function normalizePhotoSelection(value: unknown): DentistPhotoSelection | null {
+  if (!value || typeof value !== 'object') return null;
+
+  const photo = value as Partial<DentistPhotoSelection>;
+
+  if (
+    typeof photo.uri !== 'string' ||
+    photo.uri.length === 0 ||
+    typeof photo.name !== 'string' ||
+    photo.name.length === 0 ||
+    typeof photo.type !== 'string' ||
+    photo.type.length === 0
+  ) {
+    return null;
+  }
+
+  return {
+    uri: photo.uri,
+    name: photo.name,
+    type: photo.type,
+  };
+}
 
 function createDefaultValues(values?: Partial<DentistFormValues>): DentistFormValues {
   return {
@@ -127,7 +154,24 @@ export default function DentistForm({
   const removePhoto = watchedValues.removeProfilePhoto ?? false;
 
   React.useEffect(() => { reset(defaults); }, [defaults, reset]);
-  React.useEffect(() => { onChange(createDefaultValues(watchedValues)); }, [watchedValues, onChange]);
+  // useWatch may type nested objects as deeply partial. Rebuild a complete,
+  // validated form-value shape before notifying the parent component.
+  React.useEffect(() => {
+    onChange({
+      name: watchedValues.name ?? '',
+      gender: watchedValues.gender ?? '',
+      address: watchedValues.address ?? '',
+      city: watchedValues.city ?? '',
+      state: watchedValues.state ?? '',
+      country: watchedValues.country ?? '',
+      postal_code: watchedValues.postal_code ?? '',
+      phone: watchedValues.phone ?? '',
+      email: watchedValues.email ?? '',
+      specialization: watchedValues.specialization ?? '',
+      profilePhoto: normalizePhotoSelection(watchedValues.profilePhoto),
+      removeProfilePhoto: watchedValues.removeProfilePhoto ?? false,
+    });
+  }, [watchedValues, onChange]);
 
   const updateField = (field: DentistSpecificField, value: string) => {
     setValue(field, value, { shouldDirty: true, shouldValidate: true });
@@ -150,14 +194,40 @@ export default function DentistForm({
 
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
-    const extension = asset.fileName?.split('.').pop()?.toLowerCase() || 'jpg';
-    const mimeType = asset.mimeType || (extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg');
 
-    setValue('profilePhoto', {
-      uri: asset.uri,
-      name: asset.fileName || `dentist-profile.${extension}`,
-      type: mimeType,
-    }, { shouldDirty: true });
+    const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
+    if (typeof asset.fileSize === 'number' && asset.fileSize > MAX_PHOTO_SIZE) {
+      setPhotoPermissionError('The selected photo must be 5 MB or smaller.');
+      return;
+    }
+
+    const extension = asset.fileName?.split('.').pop()?.toLowerCase() || 'jpg';
+    const mimeType =
+      asset.mimeType ||
+      (extension === 'png'
+        ? 'image/png'
+        : extension === 'webp'
+          ? 'image/webp'
+          : 'image/jpeg');
+
+    if (
+      mimeType !== 'image/jpeg' &&
+      mimeType !== 'image/png' &&
+      mimeType !== 'image/webp'
+    ) {
+      setPhotoPermissionError('Please select a JPG, PNG or WebP image.');
+      return;
+    }
+
+    setValue(
+      'profilePhoto',
+      {
+        uri: asset.uri,
+        name: asset.fileName || `dentist-profile.${extension}`,
+        type: mimeType,
+      },
+      { shouldDirty: true }
+    );
     setValue('removeProfilePhoto', false, { shouldDirty: true });
   };
 

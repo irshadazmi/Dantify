@@ -1,5 +1,3 @@
-// src/app/(auth)/login.tsx
-
 import React from "react";
 import {
   ActivityIndicator,
@@ -13,7 +11,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import {
+  useLocalSearchParams,
+  useRouter,
+} from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -67,7 +68,6 @@ function getLoginErrorMessage(error: unknown): string {
 
   const data = err.response?.data;
 
-  // Laravel commonly returns a message and/or field errors.
   if (data?.errors) {
     const firstError = Object.values(data.errors)[0];
     const message = Array.isArray(firstError)
@@ -80,8 +80,67 @@ function getLoginErrorMessage(error: unknown): string {
   if (data?.detail) return data.detail;
   if (data?.message) return data.message;
 
-  // Avoid exposing internal server or network details.
   return "Invalid email or password. Please try again.";
+}
+
+/* ======================================================
+   ROUTE HELPERS
+====================================================== */
+
+/**
+ * Accept only the intended internal booking route.
+ * This prevents arbitrary external or unrelated redirects.
+ */
+function getSafeBookingRedirect(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  // Allow only the booking destinations used by Dantify.
+  if (value === "/booking/availability" || value === "/booking/review") {
+    return value;
+  }
+
+  // Retain backward compatibility with the older booking route.
+  return /^\/booking\?dentistId=[1-9]\d*$/.test(value)
+    ? value
+    : null;
+}
+
+function getBookingRouteParams(
+  params: Record<string, string | string[] | undefined>,
+): Record<string, string> {
+  const result: Record<string, string> = {};
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (key === "redirectTo" || value === undefined) {
+      return;
+    }
+
+    result[key] = Array.isArray(value) ? value[0] : value;
+  });
+
+  return result;
+}
+
+/**
+ * Normalize role whether the API returns:
+ * "patient" or { name: "patient" }.
+ */
+function getRoleName(role: unknown): string {
+  if (typeof role === "string") {
+    return role.trim().toLowerCase();
+  }
+
+  if (typeof role === "object" && role !== null && "name" in role) {
+    const name = (role as { name?: unknown }).name;
+
+    return typeof name === "string"
+      ? name.trim().toLowerCase()
+      : "";
+  }
+
+  return "";
 }
 
 /* ======================================================
@@ -92,6 +151,19 @@ export default function LoginScreen() {
   const styles = useStyles();
   const COLORS = useAppColors();
   const router = useRouter();
+
+  const params = useLocalSearchParams<
+    Record<string, string | string[]>
+  >();
+
+  const redirectParam = Array.isArray(params.redirectTo)
+    ? params.redirectTo[0]
+    : params.redirectTo;
+
+  const redirectTo = getSafeBookingRedirect(redirectParam);
+
+  const bookingParams = getBookingRouteParams(params);
+
   const { loginWithCredentials } = useAuth();
 
   const [submitting, setSubmitting] = React.useState(false);
@@ -101,7 +173,6 @@ export default function LoginScreen() {
   const {
     control,
     handleSubmit,
-    setError,
     clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
@@ -129,20 +200,38 @@ export default function LoginScreen() {
         values.password,
       );
 
-      const targetRoute = getPostAuthRoute(
+      const role = getRoleName(response.user?.role);
+
+      const postAuthRoute = getPostAuthRoute(
         response.user,
         response.next_step,
       );
 
-      router.replace(targetRoute as never);
+      if (
+        role === "patient" &&
+        (redirectTo === "/booking/availability" || redirectTo === "/booking/review")
+      ) {
+        router.replace({
+          pathname: redirectTo,
+          params: bookingParams,
+        } as never);
+      } else if (role === "patient" && redirectTo) {
+        // Backward compatibility with the previous booking route.
+        router.replace(redirectTo as never);
+      } else {
+        router.replace(postAuthRoute as never);
+      }
     } catch (error: unknown) {
       const message = getLoginErrorMessage(error);
-
       setFormError(message);
     } finally {
       setSubmitting(false);
     }
   };
+
+  /* ----------------------------------------------------
+     KEYBOARD VISIBILITY
+  ---------------------------------------------------- */
 
   const [keyboardVisible, setKeyboardVisible] = React.useState(false);
 
@@ -223,7 +312,6 @@ export default function LoginScreen() {
           {/* ---------- LOGIN FORM ---------- */}
 
           <View style={styles.card}>
-
             {/* Email */}
 
             <Text style={styles.label}>Email</Text>
@@ -236,9 +324,7 @@ export default function LoginScreen() {
                   style={[
                     styles.textInput,
                     errors.email
-                      ? {
-                        borderColor: COLORS.danger,
-                      }
+                      ? { borderColor: COLORS.danger }
                       : null,
                   ]}
                   placeholder="dentist@example.com"
@@ -393,7 +479,7 @@ export default function LoginScreen() {
               </View>
             )}
 
-            {/* Account recovery and public landing navigation */}
+            {/* Account recovery and home navigation */}
 
             <View
               style={{
@@ -500,7 +586,13 @@ export default function LoginScreen() {
 
             <Pressable
               onPress={() =>
-                router.push("/(auth)/register" as never)
+                router.push({
+                  pathname: "/(auth)/register",
+                  params: {
+                    ...bookingParams,
+                    ...(redirectTo ? { redirectTo } : {}),
+                  },
+                } as never)
               }
               accessibilityRole="link"
             >

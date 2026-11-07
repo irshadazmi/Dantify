@@ -10,7 +10,6 @@ export interface PublicSearchClinic {
   postal_code: string | null;
   phone: string | null;
   email: string | null;
-  profile_photo_url: string | null;
 }
 
 export interface PublicSearchDentist {
@@ -21,7 +20,8 @@ export interface PublicSearchDentist {
   gender?: string | null;
   phone?: string | null;
   email?: string | null;
-  profile_photo_url: string | null;
+  profile_photo_path?: string | null;
+  profile_photo_url?: string | null;
   clinics: PublicSearchClinic[];
 }
 
@@ -59,11 +59,9 @@ export interface PublicDentistProfileResponse {
 
 const dentistSearchService = {
   /**
-   * Search dentists linked to active clinics.
-   * GET /booking/dentists
-   *
-   * The current Laravel implementation matches query against dentist name
-   * and specialization, and location against clinic city, state or postal code.
+   * Search dentists associated with active clinics.
+   * Laravel currently searches query against dentist name and specialization,
+   * and location against clinic address, city, state and postal code.
    */
   async search(
     params: DentistSearchParams = {},
@@ -76,10 +74,7 @@ const dentistSearchService = {
     return response.data;
   },
 
-  /**
-   * Retrieve one publicly discoverable dentist and active clinic associations.
-   * GET /booking/dentists/{id}
-   */
+  /** Retrieve a public dentist profile and its active clinic associations. */
   async getPublicById(id: number): Promise<PublicSearchDentist> {
     const response = await api.get<PublicDentistProfileResponse>(
       `/booking/dentists/${id}`,

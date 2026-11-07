@@ -1,0 +1,19 @@
+# Exclude Laravel backend completely
+/dantify-api/
+
+# Exclude mobile development artifacts
+/dantify-mobile/node_modules/
+/dantify-mobile/.git/
+/dantify-mobile/.expo/
+/dantify-mobile/dist/
+/dantify-mobile/web-build/
+
+# Exclude environment and local files
+/dantify-mobile/.env
+/dantify-mobile/.env.*
+!/dantify-mobile/.env.example
+
+# Exclude logs
+/dantify-mobile/npm-debug.log*
+/dantify-mobile/yarn-debug.log*
+/dantify-mobile/*.log

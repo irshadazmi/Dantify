@@ -8,20 +8,14 @@ import Constants from 'expo-constants';
 
 /* ======================================================
    BASE URL
-   Expected value ends with /api
 ====================================================== */
-
-// const API_BASE_URL: string =
-//   Constants.expoConfig?.extra?.API_BASE_URL ??
-//   'http://192.168.29.62/api';
 
 const API_BASE_URL: string =
   Constants.expoConfig?.extra?.API_BASE_URL ??
-  'https://dantify.oolasystems.com/api';
+  'http://192.168.29.62/api';
 
 /* ======================================================
    TOKEN PROVIDER
-   Auth context/service sets this provider.
 ====================================================== */
 
 let getAccessToken: (() => Promise<string | null>) | null = null;
@@ -41,7 +35,6 @@ const api: AxiosInstance = axios.create({
   timeout: 15000,
   headers: {
     Accept: 'application/json',
-    'Content-Type': 'application/json',
   },
 });
 
@@ -57,8 +50,16 @@ api.interceptors.request.use(
       if (token) {
         config.headers.set('Authorization', `Bearer ${token}`);
       }
+
+      // Let Axios/browser generate the multipart boundary.
+      if (
+        typeof FormData !== 'undefined' &&
+        config.data instanceof FormData
+      ) {
+        config.headers.delete('Content-Type');
+      }
     } catch (error) {
-      console.warn('[API] Could not retrieve access token:', error);
+      console.warn('[API] Request interceptor error:', error);
     }
 
     return config;

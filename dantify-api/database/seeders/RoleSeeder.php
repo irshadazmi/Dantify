@@ -24,7 +24,7 @@ class RoleSeeder extends Seeder
             ],
             [
                 'name' => 'staff',
-                'description' => 'Patient registration and appointments',
+                'description' => 'Patient registration and bookings',
             ],
             [
                 'name' => 'laboratory',

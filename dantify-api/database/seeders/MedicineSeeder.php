@@ -13,6 +13,7 @@ class MedicineSeeder extends Seeder
             [
                 'name' => 'Paracetamol 500 mg Tablet',
                 'generic_name' => 'Paracetamol',
+                'composition' => 'Paracetamol 500 mg',
                 'brand_name' => null,
                 'strength' => '500 mg',
                 'dosage_form' => 'Tablet',
@@ -23,6 +24,7 @@ class MedicineSeeder extends Seeder
             [
                 'name' => 'Ibuprofen 400 mg Tablet',
                 'generic_name' => 'Ibuprofen',
+                'composition' => 'Ibuprofen 400 mg',
                 'brand_name' => null,
                 'strength' => '400 mg',
                 'dosage_form' => 'Tablet',
@@ -33,6 +35,7 @@ class MedicineSeeder extends Seeder
             [
                 'name' => 'Amoxicillin 500 mg Capsule',
                 'generic_name' => 'Amoxicillin',
+                'composition' => 'Amoxicillin 500 mg',
                 'brand_name' => null,
                 'strength' => '500 mg',
                 'dosage_form' => 'Capsule',
@@ -41,8 +44,9 @@ class MedicineSeeder extends Seeder
                 'default_instructions' => null,
             ],
             [
-                'name' => 'Amoxicillin-Clavulanate Tablet',
+                'name' => 'Amoxicillin-Clavulanate 625 mg Tablet',
                 'generic_name' => 'Amoxicillin + Clavulanic Acid',
+                'composition' => 'Amoxicillin 500 mg + Clavulanic Acid 125 mg',
                 'brand_name' => null,
                 'strength' => '625 mg',
                 'dosage_form' => 'Tablet',
@@ -53,6 +57,7 @@ class MedicineSeeder extends Seeder
             [
                 'name' => 'Metronidazole 400 mg Tablet',
                 'generic_name' => 'Metronidazole',
+                'composition' => 'Metronidazole 400 mg',
                 'brand_name' => null,
                 'strength' => '400 mg',
                 'dosage_form' => 'Tablet',
@@ -61,8 +66,9 @@ class MedicineSeeder extends Seeder
                 'default_instructions' => null,
             ],
             [
-                'name' => 'Chlorhexidine Mouthwash',
+                'name' => 'Chlorhexidine 0.2% Mouthwash',
                 'generic_name' => 'Chlorhexidine Gluconate',
+                'composition' => 'Chlorhexidine Gluconate 0.2%',
                 'brand_name' => null,
                 'strength' => '0.2%',
                 'dosage_form' => 'Mouthwash',
@@ -71,8 +77,9 @@ class MedicineSeeder extends Seeder
                 'default_instructions' => null,
             ],
             [
-                'name' => 'Lidocaine Dental Cartridge',
+                'name' => 'Lidocaine 2% Dental Cartridge',
                 'generic_name' => 'Lidocaine',
+                'composition' => 'Lidocaine 2%',
                 'brand_name' => null,
                 'strength' => '2%',
                 'dosage_form' => 'Dental Injection',
@@ -81,8 +88,9 @@ class MedicineSeeder extends Seeder
                 'default_instructions' => null,
             ],
             [
-                'name' => 'Benzocaine Oral Gel',
+                'name' => 'Benzocaine 20% Oral Gel',
                 'generic_name' => 'Benzocaine',
+                'composition' => 'Benzocaine 20%',
                 'brand_name' => null,
                 'strength' => '20%',
                 'dosage_form' => 'Oral Gel',
@@ -91,8 +99,9 @@ class MedicineSeeder extends Seeder
                 'default_instructions' => null,
             ],
             [
-                'name' => 'Dexamethasone Tablet',
+                'name' => 'Dexamethasone 0.5 mg Tablet',
                 'generic_name' => 'Dexamethasone',
+                'composition' => 'Dexamethasone 0.5 mg',
                 'brand_name' => null,
                 'strength' => '0.5 mg',
                 'dosage_form' => 'Tablet',
@@ -103,6 +112,7 @@ class MedicineSeeder extends Seeder
             [
                 'name' => 'Nystatin Oral Suspension',
                 'generic_name' => 'Nystatin',
+                'composition' => 'Nystatin 100,000 units/mL',
                 'brand_name' => null,
                 'strength' => '100,000 units/mL',
                 'dosage_form' => 'Oral Suspension',
@@ -121,6 +131,7 @@ class MedicineSeeder extends Seeder
                 ],
                 [
                     'generic_name' => $medicine['generic_name'],
+                    'composition' => $medicine['composition'],
                     'brand_name' => $medicine['brand_name'],
                     'manufacturer' => $medicine['manufacturer'],
                     'description' => $medicine['description'],

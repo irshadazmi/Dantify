@@ -1,8 +1,12 @@
-/* ======================================================
-   DENTIST TYPES – aligned with Laravel Dentist model
-====================================================== */
-
 import type { Address } from './address';
+import type {
+  ApiResponse,
+  PaginatedApiResponse,
+} from './api';
+
+/* ======================================================
+   DENTIST
+====================================================== */
 
 export interface Dentist extends Address {
   id: number;
@@ -18,13 +22,23 @@ export interface Dentist extends Address {
   updated_at: string | null;
 }
 
+/* ======================================================
+   CREATE / UPDATE PAYLOADS
+====================================================== */
+
+export interface ProfilePhotoPayload {
+  uri: string;
+  name: string;
+  type: string;
+}
+
 export interface DentistCreatePayload extends Address {
   name: string;
   gender?: string | null;
   phone?: string | null;
   email?: string | null;
   specialization?: string | null;
-  profile_photo?: { uri: string; name: string; type: string } | null;
+  profile_photo?: ProfilePhotoPayload | null;
 }
 
 export interface DentistUpdatePayload extends Partial<Address> {
@@ -33,29 +47,25 @@ export interface DentistUpdatePayload extends Partial<Address> {
   phone?: string | null;
   email?: string | null;
   specialization?: string | null;
-  profile_photo?: { uri: string; name: string; type: string } | null;
+  profile_photo?: ProfilePhotoPayload | null;
   remove_profile_photo?: boolean;
 }
 
-export interface MyDentistProfileResponse {
-  message?: string;
+/* ======================================================
+   DENTIST PROFILE RESPONSES
+====================================================== */
+
+export interface MyDentistProfileResponse
+  extends ApiResponse<Dentist | null> {
   next_step: 'create_profile' | 'dashboard';
-  data: Dentist | null;
 }
 
-/** Laravel paginator returned as { message, data: { data: Dentist[], ... } }. */
-export interface PaginatedDentistsResponse {
-  message?: string;
-  data: {
-    data: Dentist[];
-    current_page: number;
-    last_page: number;
-    per_page: number;
-    total: number;
-    next_page_url?: string | null;
-    prev_page_url?: string | null;
-  };
-}
+export type PaginatedDentistsResponse =
+  PaginatedApiResponse<Dentist>;
+
+/* ======================================================
+   CLINIC ASSOCIATION
+====================================================== */
 
 export interface DentistClinic {
   id: number;
@@ -84,10 +94,13 @@ export interface DentistClinicPivot {
   updated_at?: string;
 }
 
+/* ======================================================
+   DENTIST DETAILS
+====================================================== */
+
 export interface DentistDetails extends Dentist {
   clinics?: DentistClinicInfo[];
 }
 
-export interface DentistDetailsResponse {
-  data: DentistDetails;
-}
+export type DentistDetailsResponse =
+  ApiResponse<DentistDetails>;

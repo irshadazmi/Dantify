@@ -23,6 +23,7 @@ import type {
   RegisterRequest,
   RegisterResponse,
 } from '@/types/auth';
+import axios from 'axios';
 
 /* ======================================================
    STORAGE
@@ -107,8 +108,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   useEffect(() => {
-    setAccessTokenProvider(async () => token);
-  }, [token]);
+    setAccessTokenProvider(getStoredToken);
+  }, []);
   const [isLoading, setIsLoading] = useState(true);
   const [postAuthRoute, setPostAuthRoute] = useState<string | null>(null);
 
@@ -173,10 +174,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setToken(storedToken);
       } catch (error) {
         if (!cancelled) {
-          console.warn('[Auth] Session restoration failed.', error);
+          const isUnauthorized =
+            axios.isAxiosError(error) &&
+            error.response?.status === 401;
 
-          // Do not erase a potentially valid session because of
-          // a temporary network or server error.
+          if (isUnauthorized) {
+            console.warn(
+              '[Auth] Stored session is invalid or expired. Clearing session.',
+            );
+
+            try {
+              await clearStoredSession();
+            } catch (storageError) {
+              console.warn(
+                '[Auth] Could not clear stored session.',
+                storageError,
+              );
+            }
+          } else {
+            console.warn(
+              '[Auth] Session restoration failed due to a network or server error.',
+              error,
+            );
+          }
+
           setUser(null);
           setToken(null);
         }

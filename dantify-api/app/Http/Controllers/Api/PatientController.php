@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Patient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use RuntimeException;
 
 class PatientController extends Controller
 {
@@ -46,29 +49,45 @@ class PatientController extends Controller
             'dob' => ['nullable', 'date', 'before_or_equal:today'],
             'address' => ['nullable', 'string', 'max:500'],
             'city' => ['nullable', 'string', 'max:100'],
+            'state' => ['nullable', 'string', 'max:100'],
             'country' => ['nullable', 'string', 'max:100'],
+            'postal_code' => ['nullable', 'string', 'max:20'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'email' => [
-                'nullable',
-                'email',
-                'max:255',
-            ],
+            'email' => ['nullable', 'email', 'max:255'],
             'insurance_provider_id' => [
                 'nullable',
                 'integer',
                 'exists:insurance_providers,id',
             ],
+            'profile_photo' => [
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
         ]);
 
-        // Never accept user_id from the request body.
+        unset($validated['profile_photo']);
+
         $patient = Patient::create([
             ...$validated,
             'user_id' => $user->id,
         ]);
 
+        if ($request->hasFile('profile_photo')) {
+            $photoPath = $this->storeProfilePhoto(
+                $request->file('profile_photo'),
+                $patient
+            );
+
+            $patient->update([
+                'profile_photo_path' => $photoPath,
+            ]);
+        }
+
         return response()->json([
             'message' => 'Patient profile created successfully.',
-            'data' => $patient,
+            'data' => $patient->fresh(),
         ], 201);
     }
 
@@ -94,7 +113,7 @@ class PatientController extends Controller
         $this->authorizePatientAccess($request, $patient);
 
         $validated = $request->validate([
-            'nane' => ['sometimes', 'required', 'string', 'max:100'],
+            'name' => ['sometimes', 'required', 'string', 'max:100'],
             'gender' => ['sometimes', 'nullable', 'string', 'max:30'],
             'dob' => [
                 'sometimes',
@@ -104,24 +123,57 @@ class PatientController extends Controller
             ],
             'address' => ['sometimes', 'nullable', 'string', 'max:500'],
             'city' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'state' => ['sometimes', 'nullable', 'string', 'max:100'],
             'country' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'postal_code' => ['sometimes', 'nullable', 'string', 'max:20'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
-            'email' => [
-                'sometimes',
-                'nullable',
-                'email',
-                'max:255',
-            ],
+            'email' => ['sometimes', 'nullable', 'email', 'max:255'],
             'insurance_provider_id' => [
                 'sometimes',
                 'nullable',
                 'integer',
                 'exists:insurance_providers,id',
             ],
+            'profile_photo' => [
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
+            'remove_profile_photo' => ['sometimes', 'boolean'],
         ]);
 
-        // user_id is intentionally not editable.
-        $patient->update($validated);
+        $oldPhotoPath = $patient->profile_photo_path;
+        $removePhoto = (bool) ($validated['remove_profile_photo'] ?? false);
+
+        unset(
+            $validated['profile_photo'],
+            $validated['remove_profile_photo']
+        );
+
+        $patient->fill($validated);
+        $patient->save();
+
+        if ($request->hasFile('profile_photo')) {
+            $newPhotoPath = $this->storeProfilePhoto(
+                $request->file('profile_photo'),
+                $patient
+            );
+
+            $patient->update([
+                'profile_photo_path' => $newPhotoPath,
+            ]);
+
+            if ($oldPhotoPath && $oldPhotoPath !== $newPhotoPath) {
+                Storage::disk('public')->delete($oldPhotoPath);
+            }
+        } elseif ($removePhoto && $oldPhotoPath) {
+            $patient->update([
+                'profile_photo_path' => null,
+            ]);
+
+            Storage::disk('public')->delete($oldPhotoPath);
+        }
 
         return response()->json([
             'message' => 'Patient profile updated successfully.',
@@ -136,7 +188,14 @@ class PatientController extends Controller
         Request $request,
         Patient $patient
     ): JsonResponse {
-        $this->authorizePatientAccess($request, $patient);
+        abort_unless(
+            $request->user()
+                ->role()
+                ->where('name', 'superadmin')
+                ->exists(),
+            403,
+            'Only OolaSystems SuperAdmin can delete patient profiles.'
+        );
 
         $patient->delete();
 
@@ -167,6 +226,40 @@ class PatientController extends Controller
             'next_step' => 'dashboard',
             'data' => $patient,
         ]);
+    }
+
+    /**
+     * Store patient photo as:
+     * profiles/patients/{user_id}-{name}.{extension}
+     */
+
+    private function storeProfilePhoto(
+        UploadedFile $photo,
+        Patient $patient
+    ): string {
+        $slug = Str::slug($patient->name) ?: 'patient';
+
+        $extension = strtolower($photo->extension() ?: 'jpg');
+
+        if ($extension === 'jpeg') {
+            $extension = 'jpg';
+        }
+
+        $filename = $patient->user_id . '-' . $slug . '.' . $extension;
+
+        $path = $photo->storeAs(
+            'profiles/patients',
+            $filename,
+            'public'
+        );
+
+        if (!$path) {
+            throw new RuntimeException(
+                'Unable to store the patient profile photo.'
+            );
+        }
+
+        return $path;
     }
 
     /**

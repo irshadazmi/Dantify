@@ -1,18 +1,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Keyboard,
-  Modal,
   Pressable,
   ScrollView,
-  TextInput,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { AppText } from '@/components/ui/app-text';
+import AppHeader from '@/components/ui/app-header';
+import TabBar from '@/components/tab-bar';
 import { IconSymbol } from '@/components/icon-symbol';
+import PublicSearchBar from '@/components/booking/public-search-bar';
+import PublicBookingHeader from '@/components/booking/public-booking-header';
 import { useAuth } from '@/contexts/auth-context';
 import { useAppColors } from '@/hooks/use-app-colors';
 import { usePublicLandingStyles } from '@/styles/styles';
@@ -20,20 +23,25 @@ import dentistSearchService, {
   type PublicSearchDentist,
 } from '@/services/dentist-search-service';
 
-const POPULAR_TREATMENTS = [
-  { label: 'Cleaning', icon: 'cleaning-services', query: 'Dental Cleaning' },
-  { label: 'Whitening', icon: 'auto-awesome', query: 'Teeth Whitening' },
-  { label: 'Braces', icon: 'medical-services', query: 'Braces Orthodontist' },
-  { label: 'Root canal', icon: 'healing', query: 'Root Canal' },
-];
-
 const DEFAULT_LOCATION = 'Pune, Maharashtra';
+
+const POPULAR_SPECIALIZATIONS = [
+  // Search by stable word stems to match common stored variants.
+  { label: 'General', query: '', icon: 'tooth' },
+  { label: 'Orthodontist', query: 'Orthodont', icon: 'health-and-safety' },
+  { label: 'Pediatric', query: 'Pediatric', icon: 'person.2.fill' },
+  { label: 'Endodontist', query: 'Endodont', icon: 'healing' },
+] as const;
 
 function getDentistLocation(dentist: PublicSearchDentist): string {
   const clinic = dentist.clinics?.[0];
-  if (!clinic) return 'Location not listed';
-  return [clinic.city, clinic.state].filter(Boolean).join(', ') ||
-    clinic.address || 'Location not listed';
+  if (!clinic) return 'Clinic location not listed';
+
+  return (
+    [clinic.city, clinic.state].filter(Boolean).join(', ') ||
+    clinic.address ||
+    'Clinic location not listed'
+  );
 }
 
 export default function PublicLandingScreen() {
@@ -44,8 +52,6 @@ export default function PublicLandingScreen() {
 
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState(DEFAULT_LOCATION);
-  const [locationDraft, setLocationDraft] = useState(DEFAULT_LOCATION);
-  const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [dentists, setDentists] = useState<PublicSearchDentist[]>([]);
   const [loadingDentists, setLoadingDentists] = useState(true);
   const [dentistLoadFailed, setDentistLoadFailed] = useState(false);
@@ -53,6 +59,7 @@ export default function PublicLandingScreen() {
   const loadRecommendedDentists = useCallback(async () => {
     setLoadingDentists(true);
     setDentistLoadFailed(false);
+
     try {
       const response = await dentistSearchService.search({
         location,
@@ -73,286 +80,226 @@ export default function PublicLandingScreen() {
     void loadRecommendedDentists();
   }, [loadRecommendedDentists]);
 
-  const openSearch = useCallback((searchText = query, resultType: 'dentists' | 'clinics' = 'dentists') => {
+  const openSearch = useCallback((searchText = query) => {
     Keyboard.dismiss();
     router.push({
       pathname: '/booking/results',
       params: {
         query: searchText.trim(),
         location,
-        language: 'English',
-        type: resultType,
       },
-    });
+    } as never);
   }, [location, query, router]);
 
-  const openAppointments = () => {
+  const openDentist = useCallback((dentist: PublicSearchDentist) => {
+    router.push({
+      pathname: '/booking/dentist/[id]',
+      params: { id: String(dentist.id), type: 'dentists', name: dentist.name, location },
+    } as never);
+  }, [location, router]);
+
+  const openAppointments = useCallback(() => {
     if (isAuthenticated) {
       router.push('/appointments' as never);
     } else {
-      router.push({
-        pathname: '/(auth)/login' as never,
-        params: { redirectTo: '/appointments' },
-      } as never);
+      router.push('/(auth)/login' as never);
     }
-  };
+  }, [isAuthenticated, router]);
 
-  const openAccount = () => {
+  const openLogin = useCallback(() => {
     if (isAuthenticated) {
       router.push('/dashboard' as never);
     } else {
       router.push('/(auth)/login' as never);
     }
-  };
+  }, [isAuthenticated, router]);
 
-  const openDentist = (dentist: PublicSearchDentist) => {
-    router.push({
-      pathname: '/booking/dentist/[id]',
-      params: {
-        id: String(dentist.id),
-        type: 'dentists',
-        name: dentist.name,
-      },
-    });
-  };
+  const openRegister = useCallback(() => {
+    if (isAuthenticated) {
+      router.push('/dashboard' as never);
+    } else {
+      router.push('/(auth)/register' as never);
+    }
+  }, [isAuthenticated, router]);
 
-  const saveLocation = () => {
-    const nextLocation = locationDraft.trim();
-    if (nextLocation) setLocation(nextLocation);
-    setLocationModalVisible(false);
-  };
+  const openVoiceSearch = useCallback(() => {
+    // The microphone UI is included now. Speech-to-text will be connected
+    // after confirming the project's Expo SDK and native speech package.
+    Alert.alert(
+      'Voice search',
+      'Voice-to-text will be enabled in the voice-search phase. You can use the search box in the meantime.',
+    );
+  }, []);
+
 
   return (
     <View style={styles.screen}>
+      {isAuthenticated ? <AppHeader title="DANTIFY" /> : null}
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        <PublicBookingHeader location={location} onLocationChange={setLocation} />
 
         <View style={styles.heroRow}>
           <View style={styles.heroCopy}>
-            <AppText style={styles.heroTitle}>Your smile, cared for.</AppText>
+            <AppText style={styles.heroTitle}>Find the right dentist for you</AppText>
             <AppText style={styles.heroSubtitle}>
-              Find trusted dental care near you.
+              Search dentists or specializations near you.
             </AppText>
           </View>
           <Image
             source={require('../../assets/images/dantify-landing-hero.png')}
             resizeMode="contain"
-            accessibilityLabel="Dental appointment calendar, care shield and tooth illustration"
+            accessibilityLabel="Dantify dental appointment and care illustration"
             style={styles.heroArtwork}
           />
         </View>
 
         <View style={styles.searchCard}>
-          <AppText style={styles.searchLabel}>Find your dentist</AppText>
-          <View style={styles.searchInputRow}>
-            <IconSymbol name="magnifyingglass" size={20} color={colors.textMuted} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              onSubmitEditing={() => openSearch()}
-              placeholder="Dentist, treatment or clinic"
-              placeholderTextColor={colors.textMuted}
-              returnKeyType="search"
-              autoCorrect={false}
-              style={styles.searchInput}
-              accessibilityLabel="Search dentist, treatment or clinic"
-            />
-            <Pressable
-              onPress={() => router.push('/booking' as never)}
-              hitSlop={8}
-              style={styles.voiceButton}
-              accessibilityRole="button"
-              accessibilityLabel="Open voice search"
-            >
-              <IconSymbol name="mic.fill" size={21} color={colors.primary} />
-            </Pressable>
-          </View>
-          <View style={styles.searchDivider} />
-          <Pressable
-            onPress={() => {
-              setLocationDraft(location);
-              setLocationModalVisible(true);
-            }}
-            style={styles.locationRow}
-            accessibilityRole="button"
-            accessibilityLabel={`Change location, current location ${location}`}
-          >
-            <IconSymbol name="location.fill" size={18} color={colors.primary} />
-            <AppText style={styles.locationText} numberOfLines={1}>{location}</AppText>
-            <IconSymbol name="expand-more" size={18} color={colors.textMuted} />
-          </Pressable>
-          <Pressable
-            onPress={() => openSearch()}
-            style={styles.searchButton}
-            accessibilityRole="button"
-          >
-            <AppText style={styles.searchButtonText}>Search dentists</AppText>
-          </Pressable>
+          <PublicSearchBar
+            value={query}
+            onChangeText={setQuery}
+            onSearch={() => openSearch()}
+            onVoiceSearch={openVoiceSearch}
+            placeholder="Dentist, specialization or clinic"
+            accessibilityLabel="Search dentists, clinics or dental concerns"
+          />
+          <AppText style={styles.searchHint}>
+            Search by dentist, specialization or location
+          </AppText>
         </View>
 
         <View style={styles.section}>
-          <AppText style={styles.sectionTitle}>Popular treatments</AppText>
-          <View style={styles.treatmentsRow}>
-            {POPULAR_TREATMENTS.map((item) => (
+          <View style={styles.sectionHeadingRow}>
+            <AppText style={styles.sectionTitle}>Popular Specializations</AppText>
+            <Pressable onPress={() => openSearch('')} accessibilityRole="link" hitSlop={6}>
+              <AppText style={styles.viewAll}>View all</AppText>
+            </Pressable>
+          </View>
+
+          <View style={styles.specializationsRow}>
+            {POPULAR_SPECIALIZATIONS.map((item) => (
               <Pressable
                 key={item.label}
                 onPress={() => openSearch(item.query)}
-                style={styles.treatmentItem}
+                style={({ pressed }) => [styles.specializationCard, pressed && styles.pressedCard]}
                 accessibilityRole="button"
+                accessibilityLabel={`Search ${item.label} dentists`}
               >
-                <View style={styles.treatmentIcon}>
-                  <IconSymbol name={item.icon as never} size={25} color={colors.primary} />
-                </View>
-                <AppText style={styles.treatmentLabel}>{item.label}</AppText>
+                <IconSymbol name={item.icon as never} size={27} color={colors.primary} />
+                <AppText style={styles.specializationLabel} numberOfLines={1}>
+                  {item.label}
+                </AppText>
               </Pressable>
             ))}
           </View>
         </View>
 
-        <View style={styles.section}>
-          <AppText style={styles.sectionTitle}>Explore care</AppText>
-          <View style={styles.exploreList}>
-            <Pressable
-              onPress={() => openSearch('Dental clinics', 'clinics')}
-              style={styles.exploreCard}
-              accessibilityRole="button"
-            >
-              <View style={styles.exploreIconBox}>
-                <IconSymbol name="location.fill" size={25} color={colors.primary} />
-              </View>
-              <View style={styles.exploreCopy}>
-                <AppText style={styles.exploreTitle}>Clinics near you</AppText>
-                <AppText style={styles.exploreSubtitle}>Browse nearby dental clinics</AppText>
-              </View>
-              <IconSymbol name="chevron.right" size={18} color={colors.textSecondary} />
-            </Pressable>
-            <Pressable
-              onPress={() => openSearch('Specialist dentist')}
-              style={styles.exploreCard}
-              accessibilityRole="button"
-            >
-              <View style={styles.exploreIconBox}>
-                <IconSymbol name="health-and-safety" size={25} color={colors.primary} />
-              </View>
-              <View style={styles.exploreCopy}>
-                <AppText style={styles.exploreTitle}>Find a specialist</AppText>
-                <AppText style={styles.exploreSubtitle}>Search by dental expertise</AppText>
-              </View>
-              <IconSymbol name="chevron.right" size={18} color={colors.textSecondary} />
-            </Pressable>
-          </View>
-        </View>
-
         <View style={[styles.section, styles.recommendedSection]}>
           <View style={styles.sectionHeadingRow}>
-            <AppText style={styles.sectionTitle}>Recommended dentists</AppText>
-            <Pressable onPress={() => openSearch('')} accessibilityRole="link">
-              <AppText style={styles.viewAll}>View all</AppText>
+            <View style={styles.nearbyHeading}>
+              <AppText style={styles.sectionTitle}>Top Dentists Near You</AppText>
+              <AppText style={styles.sectionSubtitle}>
+                Based on clinics in {location.split(',')[0]}
+              </AppText>
+            </View>
+            <Pressable onPress={() => openSearch('')} accessibilityRole="link" hitSlop={6}>
+              <AppText style={styles.viewAll}>View all →</AppText>
             </Pressable>
           </View>
 
           {loadingDentists ? (
             <View style={styles.loadingRow}>
               <ActivityIndicator color={colors.primary} />
-              <AppText style={styles.mutedText}>Finding dentists near {location}...</AppText>
+              <AppText style={styles.mutedText}>
+                Finding dentists near {location.split(',')[0]}...
+              </AppText>
             </View>
           ) : dentists.length > 0 ? (
             dentists.map((dentist) => (
               <Pressable
                 key={dentist.id}
                 onPress={() => openDentist(dentist)}
-                style={styles.dentistCard}
+                style={({ pressed }) => [styles.dentistCard, pressed && styles.pressedCard]}
                 accessibilityRole="button"
-                accessibilityLabel={`View ${dentist.name}`}
+                accessibilityLabel={`View profile of ${dentist.name}`}
               >
                 <View style={styles.dentistAvatar}>
                   {dentist.profile_photo_url ? (
                     <Image
                       source={{ uri: dentist.profile_photo_url }}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        borderRadius: 14,
-                      }}
+                      style={styles.dentistPhoto}
                       resizeMode="cover"
                     />
                   ) : (
-                    <IconSymbol
-                      name="person.fill"
-                      size={27}
-                      color={colors.primary}
-                    />
+                    <IconSymbol name="person.fill" size={27} color={colors.primary} />
                   )}
                 </View>
                 <View style={styles.dentistInfo}>
-                  <AppText style={styles.dentistName}>{dentist.name}</AppText>
-                  <AppText style={styles.dentistSpecialty}>
+                  <AppText style={styles.dentistName} numberOfLines={1}>
+                    {dentist.name}
+                  </AppText>
+                  <AppText style={styles.dentistSpecialty} numberOfLines={1}>
                     {dentist.specialization || 'Dental Practitioner'}
                   </AppText>
-                  <AppText style={styles.dentistLocation}>{getDentistLocation(dentist)}</AppText>
+                  <View style={styles.dentistLocationRow}>
+                    <IconSymbol name="location.fill" size={13} color={colors.textMuted} />
+                    <AppText style={styles.dentistLocation} numberOfLines={1}>
+                      {getDentistLocation(dentist)}
+                    </AppText>
+                  </View>
                 </View>
-                <IconSymbol name="chevron.right" size={17} color={colors.textSecondary} />
+                <View style={styles.profileAction}>
+                  <AppText style={styles.profileActionText}>Profile</AppText>
+                  <IconSymbol name="chevron.right" size={15} color={colors.primary} />
+                </View>
               </Pressable>
             ))
           ) : (
             <View style={styles.emptyDentists}>
-              <IconSymbol name="medical-services" size={24} color={colors.textMuted} />
+              <View style={styles.emptyIcon}>
+                <IconSymbol name="medical-services" size={24} color={colors.primary} />
+              </View>
               <View style={styles.emptyDentistsText}>
                 <AppText style={styles.emptyTitle}>
-                  {dentistLoadFailed ? 'Dentist discovery is temporarily unavailable' : 'Explore dentist profiles'}
+                  {dentistLoadFailed
+                    ? 'Dentist discovery is temporarily unavailable'
+                    : 'No dentists found in this area yet'}
                 </AppText>
                 <AppText style={styles.mutedText}>
                   {dentistLoadFailed
-                    ? 'You can still search for dentists and clinics.'
-                    : 'Browse available dentists and clinics in your area.'}
+                    ? 'You can still search for dentists by name or specialization.'
+                    : 'Try changing your location or search for another area.'}
                 </AppText>
               </View>
+              <Pressable
+                onPress={loadRecommendedDentists}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Retry loading dentists"
+              >
+                <IconSymbol name="arrow.clockwise" size={19} color={colors.primary} />
+              </Pressable>
             </View>
           )}
         </View>
       </ScrollView>
 
-      <View style={styles.bottomBar}>
-        <PublicTab icon="house.fill" label="Home" active onPress={() => router.replace('/' as never)} />
-        <PublicTab icon="calendar" label="Appointments" onPress={openAppointments} />
-        <PublicTab icon="person.crop.circle" label="Account" onPress={openAccount} />
-      </View>
-
-      <Modal
-        visible={locationModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setLocationModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.locationModal}>
-            <View style={styles.modalHeader}>
-              <AppText style={styles.modalTitle}>Choose your location</AppText>
-              <Pressable onPress={() => setLocationModalVisible(false)} hitSlop={10}>
-                <IconSymbol name="xmark" size={21} color={colors.textSecondary} />
-              </Pressable>
-            </View>
-            <AppText style={styles.mutedText}>Enter a city, area or PIN code.</AppText>
-            <TextInput
-              value={locationDraft}
-              onChangeText={setLocationDraft}
-              placeholder="e.g. Baner, Pune"
-              placeholderTextColor={colors.textMuted}
-              style={styles.locationInput}
-              returnKeyType="done"
-              onSubmitEditing={saveLocation}
-              autoFocus
-            />
-            <Pressable onPress={saveLocation} style={styles.searchButton}>
-              <AppText style={styles.searchButtonText}>Apply location</AppText>
-            </Pressable>
-          </View>
+      {isAuthenticated ? (
+        <TabBar />
+      ) : (
+        <View style={styles.bottomBar}>
+          <PublicTab icon="house.fill" label="Home" active onPress={() => router.replace('/' as never)} />
+          <PublicTab icon="calendar" label="Appointments" onPress={openAppointments} />
+          <PublicTab icon="login" label="Login" onPress={openLogin} />
+          <PublicTab icon="person.badge.plus" label="Register" onPress={openRegister} />
         </View>
-      </Modal>
+      )}
+
     </View>
   );
 }
@@ -370,12 +317,18 @@ function PublicTab({
 }) {
   const colors = useAppColors();
   const styles = usePublicLandingStyles();
+
   return (
-    <Pressable onPress={onPress} style={styles.tabItem} accessibilityRole="button">
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.tabItem, pressed && styles.tabPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
       <IconSymbol
         name={icon as never}
         size={21}
-        color={active ? colors.primary : colors.tabInactive}
+        color={active ? colors.tabActive : colors.tabInactive}
       />
       <AppText style={active ? styles.tabLabelActive : styles.tabLabel}>
         {label}

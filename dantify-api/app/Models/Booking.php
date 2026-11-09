@@ -104,4 +104,14 @@ class Booking extends Model
     {
         return $this->hasMany(PatientFile::class);
     }
+
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(BookingStatusHistory::class);
+    }
+
+    public function changeRequests(): HasMany
+    {
+        return $this->hasMany(BookingChangeRequest::class);
+    }
 }

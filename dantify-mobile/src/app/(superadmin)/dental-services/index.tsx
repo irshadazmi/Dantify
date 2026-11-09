@@ -7,11 +7,13 @@ import React, {
 
 import {
     ActivityIndicator,
-    Alert,
+
     Pressable,
     ScrollView,
-    View,
+    View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 
 import { useRouter } from 'expo-router';
 
@@ -29,6 +31,7 @@ import {
 } from '@/services/dental-service-service';
 
 import type { DentalService } from '@/types/dental-service';
+import { ScreenHeader } from '@/components/ui/screen-header';
 
 /* ======================================================
    HELPERS
@@ -147,7 +150,7 @@ export default function DentalServicesScreen() {
 
         const nextStatus = !service.is_active;
 
-        Alert.alert(
+        showAppDialog(
             `${nextStatus ? 'Activate' : 'Deactivate'} service`,
             `Are you sure you want to ${nextStatus ? 'activate' : 'deactivate'
             } "${service.name}"?`,
@@ -184,7 +187,7 @@ export default function DentalServicesScreen() {
                 ),
             );
         } catch (err) {
-            Alert.alert(
+            showAppDialog(
                 'Unable to update service status',
                 getErrorMessage(err),
             );
@@ -236,30 +239,12 @@ export default function DentalServicesScreen() {
                 contentContainerStyle={styles.listContent}
                 keyboardShouldPersistTaps="handled"
             >
-                <View style={styles.screenHeader}>
-                    <View style={styles.screenHeaderContent}>
-                        <AppText variant="title">
-                            Dental Services
-                        </AppText>
-
-                        <AppText variant="muted">
-                            Manage the master dental service catalogue.
-                            Clinics can select these services and configure
-                            their own pricing and duration.
-                        </AppText>
-                    </View>
-
-                    <Pressable
-                        onPress={() => router.push('/dental-services/create')}
-                        accessibilityRole="button"
-                        accessibilityLabel="Add dental service"
-                        style={styles.smallButton}
-                    >
-                        <AppText style={styles.smallButtonText}>
-                            + Add
-                        </AppText>
-                    </Pressable>
-                </View>
+                <ScreenHeader
+                    title="Dental Services"
+                    subtitle="Manage the master dental service catalogue."
+                    actionTitle="+ Add"
+                    onAction={() => router.push('/dental-services/create')}
+                />
 
                 <AppInput
                     style={styles.searchInput}

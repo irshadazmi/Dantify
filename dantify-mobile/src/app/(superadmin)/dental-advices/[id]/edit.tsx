@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  View,
+
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AppText } from '@/components/ui/app-text';
@@ -90,7 +92,7 @@ export default function EditDentalAdviceScreen() {
         }
       } catch (error) {
         if (mounted) {
-          Alert.alert(
+          showAppDialog(
             'Unable to load dental advice',
             getErrorMessage(error),
             [
@@ -124,7 +126,7 @@ export default function EditDentalAdviceScreen() {
       const updated = await updateDentalAdvice(adviceId, payload);
       setAdvice(updated);
 
-      Alert.alert(
+      showAppDialog(
         'Dental Advice updated',
         `"${updated.name}" has been updated successfully.`,
         [
@@ -136,7 +138,7 @@ export default function EditDentalAdviceScreen() {
         ],
       );
     } catch (error) {
-      Alert.alert(
+      showAppDialog(
         'Unable to update dental advice',
         getErrorMessage(error),
       );

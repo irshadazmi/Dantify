@@ -74,6 +74,7 @@ function getErrorMessage(error: unknown): string {
 function statusLabel(status: AssociationScheduleStatus): string {
     const labels: Record<AssociationScheduleStatus, string> = {
         proposed: "Awaiting review",
+        approved: "Approved",
         confirmed: "Confirmed",
         change_requested: "Changes requested",
         cancelled: "Cancelled",
@@ -747,22 +748,103 @@ export default function AssociationScheduleScreen() {
                             Dates are displayed using your device's regional settings.
                         </AppText>
 
-                        <AppText style={styles.label}>Working days and shifts</AppText>
+                        <AppText style={styles.label}>Working days</AppText>
+                        <AppText style={styles.metaText}>
+                            Select the days on which the dentist is available.
+                        </AppText>
 
-                        {DAYS.map((day) => {
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                flexWrap: "wrap",
+                                gap: 8,
+                                marginTop: 10,
+                                marginBottom: 8,
+                            }}
+                        >
+                            {DAYS.map((day) => {
+                                const selected = slots.some(
+                                    (slot) => slot.day_of_week === day,
+                                );
+
+                                return (
+                                    <Pressable
+                                        key={day}
+                                        accessibilityRole="button"
+                                        accessibilityState={{ selected }}
+                                        accessibilityLabel={`${day}${selected ? ", selected" : ", not selected"}`}
+                                        onPress={() => {
+                                            if (selected) {
+                                                setSlots((current) =>
+                                                    current.filter(
+                                                        (slot) => slot.day_of_week !== day,
+                                                    ),
+                                                );
+                                            } else {
+                                                addSlot(day);
+                                            }
+                                        }}
+                                        style={{
+                                            minWidth: 68,
+                                            paddingHorizontal: 16,
+                                            paddingVertical: 9,
+                                            borderRadius: 24,
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            borderWidth: 1,
+                                            borderColor: colors.primary,
+                                            backgroundColor: selected
+                                                ? colors.primary
+                                                : "transparent",
+                                        }}
+                                    >
+                                        <AppText
+                                            style={{
+                                                color: selected
+                                                    ? colors.badgeText
+                                                    : colors.primary,
+                                                fontWeight: "600",
+                                            }}
+                                        >
+                                            {day.slice(0, 3)}
+                                        </AppText>
+                                    </Pressable>
+                                );
+                            })}
+                        </View>
+
+                        <AppText style={[styles.metaText, { marginBottom: 12 }]}>
+                            {DAYS.filter((day) =>
+                                slots.some((slot) => slot.day_of_week === day),
+                            ).length} working day(s) selected
+                        </AppText>
+
+                        {DAYS.filter((day) =>
+                            slots.some((slot) => slot.day_of_week === day),
+                        ).map((day) => {
                             const daySlots = slots.filter(
                                 (slot) => slot.day_of_week === day,
                             );
 
                             return (
-                                <View key={day} style={styles.replyBox}>
-                                    <View style={[
-                                        styles.cardHeader,
-                                        { alignItems: "center" },
-                                    ]}>
+                                <View
+                                    key={day}
+                                    style={[
+                                        styles.replyBox,
+                                        { marginBottom: 10 },
+                                    ]}
+                                >
+                                    <View
+                                        style={[
+                                            styles.cardHeader,
+                                            { alignItems: "center" },
+                                        ]}
+                                    >
                                         <AppText style={styles.cardTitle}>{day}</AppText>
                                         <Pressable
                                             onPress={() => addSlot(day)}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={`Add another shift for ${day}`}
                                             style={styles.smallButton}
                                         >
                                             <AppText style={styles.smallButtonText}>
@@ -770,12 +852,6 @@ export default function AssociationScheduleScreen() {
                                             </AppText>
                                         </Pressable>
                                     </View>
-
-                                    {daySlots.length === 0 ? (
-                                        <AppText style={styles.mutedText}>
-                                            Not a working day
-                                        </AppText>
-                                    ) : null}
 
                                     {daySlots.map((slot, index) => (
                                         <View
@@ -791,14 +867,16 @@ export default function AssociationScheduleScreen() {
                                                 Shift {index + 1}
                                             </AppText>
 
-                                            <View style={{
-                                                flexDirection: "row",
-                                                gap: 8,
-                                                alignItems: "center",
-                                            }}>
+                                            <View
+                                                style={{
+                                                    flexDirection: "row",
+                                                    gap: 8,
+                                                    alignItems: "center",
+                                                }}
+                                            >
                                                 <View style={{ flex: 1 }}>
                                                     <AppText style={styles.metaText}>
-                                                        Start (HH:mm)
+                                                        From (HH:mm)
                                                     </AppText>
                                                     <TextInput
                                                         value={slot.start_time}
@@ -814,12 +892,13 @@ export default function AssociationScheduleScreen() {
                                                         style={styles.textInput}
                                                         maxLength={5}
                                                         autoCapitalize="none"
+                                                        keyboardType="numbers-and-punctuation"
                                                     />
                                                 </View>
 
                                                 <View style={{ flex: 1 }}>
                                                     <AppText style={styles.metaText}>
-                                                        End (HH:mm)
+                                                        To (HH:mm)
                                                     </AppText>
                                                     <TextInput
                                                         value={slot.end_time}
@@ -835,6 +914,7 @@ export default function AssociationScheduleScreen() {
                                                         style={styles.textInput}
                                                         maxLength={5}
                                                         autoCapitalize="none"
+                                                        keyboardType="numbers-and-punctuation"
                                                     />
                                                 </View>
 

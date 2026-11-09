@@ -7,10 +7,14 @@ use App\Models\AssociationSchedule;
 use App\Models\Booking;
 use App\Models\BookingService;
 use App\Models\BookingStatus;
+use App\Models\BookingStatusHistory;
+use App\Models\BookingChangeRequest;
 use App\Models\ClinicDentist;
 use App\Models\ClinicServiceOffering;
 use App\Models\Dentist;
 use App\Models\Patient;
+use App\Models\Clinic;
+use App\Models\Staff;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,6 +39,7 @@ class BookingController extends Controller
      */
     private const SLOT_INTERVAL_MINUTES = 15;
 
+
     /**
      * List bookings accessible to the authenticated user.
      *
@@ -43,7 +48,15 @@ class BookingController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $role = strtolower($user->role->name ?? '');
+
+        // Support both a string role and a Role model relationship.
+        $roleValue = $user->getAttribute('role');
+
+        $role = strtolower(trim(
+            is_string($roleValue)
+                ? $roleValue
+                : ($roleValue->name ?? '')
+        ));
 
         $query = Booking::with([
             'patient',
@@ -54,6 +67,7 @@ class BookingController extends Controller
         ])->latest('booking_date');
 
         if ($role === 'patient') {
+
             $patient = Patient::where('user_id', $user->id)->first();
 
             if (!$patient) {
@@ -63,8 +77,8 @@ class BookingController extends Controller
             }
 
             $query->where('patient_id', $patient->id);
-
         } elseif ($role === 'dentist') {
+
             $dentist = Dentist::where('user_id', $user->id)->first();
 
             if (!$dentist) {
@@ -74,15 +88,43 @@ class BookingController extends Controller
             }
 
             $query->where('dentist_id', $dentist->id);
+        } elseif ($role === 'clinic') {
 
-        } elseif (!in_array($role, ['admin', 'superadmin'], true)) {
+            $clinic = Clinic::where('user_id', $user->id)->first();
+
+            if (!$clinic) {
+                return response()->json([
+                    'message' => 'No clinic profile is linked to this account.',
+                ], 403);
+            }
+
+            $query->where('clinic_id', $clinic->id);
+        } elseif ($role === 'staff') {
+
+            $staff = Staff::where('user_id', $user->id)
+                ->where('is_active', true)
+                ->first();
+
+            if (!$staff || !$staff->clinic_id) {
+                return response()->json([
+                    'message' => 'No active clinic is linked to this staff account.',
+                ], 403);
+            }
+
+            $query->where('clinic_id', $staff->clinic_id);
+        } elseif (in_array($role, ['admin', 'superadmin'], true)) {
+
+            // Super Admin can view bookings across all clinics.
+
+        } else {
+
             return response()->json([
                 'message' => 'You are not authorized to list bookings.',
             ], 403);
         }
 
         $bookings = $query->paginate(
-            min((int) $request->input('per_page', 15), 100)
+            min(max((int) $request->input('per_page', 15), 1), 100)
         );
 
         return response()->json($bookings);
@@ -135,6 +177,11 @@ class BookingController extends Controller
                 'min:1',
                 'max:100',
             ],
+            'exclude_booking_id' => [
+                'nullable',
+                'integer',
+                'exists:bookings,id',
+            ],
         ]);
 
         $services = $this->resolveServices(
@@ -168,7 +215,8 @@ class BookingController extends Controller
 
         $bookings = $this->getBlockingBookings(
             (int) $validated['dentist_id'],
-            $date
+            $date,
+            $validated['exclude_booking_id'] ?? null
         );
 
         $slots = [];
@@ -358,7 +406,7 @@ class BookingController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-        $role = strtolower($user->role->name ?? '');
+        $role = $this->roleName($request);
 
         if (!in_array(
             $role,
@@ -458,14 +506,13 @@ class BookingController extends Controller
 
         $bookingDate = Carbon::parse($validated['booking_date']);
 
-        $status = BookingStatus::where(function ($query) {
-            $query->where('code', 'scheduled')
-                ->orWhere('name', 'Scheduled');
-        })->first();
+        $status = BookingStatus::where('code', 'PENDING_CONFIRMATION')
+            ->where('is_active', true)
+            ->first();
 
         if (!$status) {
             return response()->json([
-                'message' => 'The Scheduled booking status is not configured.',
+                'message' => 'The PENDING_CONFIRMATION booking status is not configured.',
             ], 422);
         }
 
@@ -531,6 +578,15 @@ class BookingController extends Controller
                 ]);
             }
 
+
+            BookingStatusHistory::create([
+                'booking_id' => $booking->id,
+                'from_status_id' => null,
+                'to_status_id' => $status->id,
+                'changed_by_user_id' => request()->user()->id,
+                'remarks' => 'Booking created.',
+            ]);
+
             return $booking;
         });
 
@@ -579,139 +635,31 @@ class BookingController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $booking = Booking::with([
-            'bookingServices.clinicServiceOffering',
-        ])->findOrFail($id);
+        $booking = Booking::findOrFail($id);
 
-        if (!$this->canAccessBooking($request, $booking, true)) {
+        if (!$this->canManageBooking($request, $booking)) {
             return response()->json([
                 'message' => 'You are not authorized to update this booking.',
             ], 403);
         }
 
+        // Date and service changes must use the approval-based rescheduling flow.
         $validated = $request->validate([
-            'booking_date' => [
-                'sometimes',
-                'required',
-                'date',
-                'after:now',
-            ],
-            'notes' => [
-                'sometimes',
-                'nullable',
-                'string',
-                'max:5000',
-            ],
-            'services' => [
-                'sometimes',
-                'array',
-                'min:1',
-            ],
-            'services.*.clinic_service_offering_id' => [
-                'required',
-                'integer',
-                'distinct',
-                'exists:clinic_service_offerings,id',
-            ],
-            'services.*.quantity' => [
-                'sometimes',
-                'integer',
-                'min:1',
-                'max:100',
-            ],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
         ]);
 
-        $newDate = Carbon::parse(
-            $validated['booking_date'] ?? $booking->booking_date
-        );
+        if (empty($validated)) {
+            return response()->json([
+                'message' => 'Only booking notes can be edited directly. Use the rescheduling request workflow to change appointment date or services.',
+            ], 422);
+        }
 
-        $serviceItems = $validated['services'] ?? $booking
-            ->bookingServices
-            ->map(fn ($item) => [
-                'clinic_service_offering_id' =>
-                    $item->clinic_service_offering_id,
-                'quantity' => $item->quantity,
-            ])
-            ->values()
-            ->all();
-
-        $services = $this->resolveServices(
-            $serviceItems,
-            (int) $booking->clinic_id
-        );
-
-        DB::transaction(function () use (
-            $booking,
-            $validated,
-            $newDate,
-            $serviceItems,
-            $services
-        ) {
-            Dentist::whereKey($booking->dentist_id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            $this->assertDentistClinicSchedule(
-                (int) $booking->dentist_id,
-                (int) $booking->clinic_id,
-                $newDate,
-                $serviceItems,
-                $services
-            );
-
-            $duration = $this->calculateDuration(
-                $serviceItems,
-                $services
-            );
-
-            $end = $newDate->copy()->addMinutes($duration);
-
-            $bookings = $this->getBlockingBookings(
-                (int) $booking->dentist_id,
-                $newDate,
-                $booking->id
-            );
-
-            if ($this->hasBookingConflict(
-                $newDate,
-                $end,
-                $bookings
-            )) {
-                abort(409, 'The requested appointment time conflicts with another booking.');
-            }
-
-            $booking->fill([
-                'booking_date' => $newDate,
-                'notes' => array_key_exists('notes', $validated)
-                    ? $validated['notes']
-                    : $booking->notes,
-            ])->save();
-
-            if (array_key_exists('services', $validated)) {
-                $booking->bookingServices()->delete();
-
-                foreach ($serviceItems as $item) {
-                    $offering = $services->get(
-                        (int) $item['clinic_service_offering_id']
-                    );
-
-                    BookingService::create([
-                        'booking_id' => $booking->id,
-                        'clinic_service_offering_id' => $offering->id,
-                        'quantity' => $item['quantity'] ?? 1,
-                        'unit_price' => $offering->price,
-                    ]);
-                }
-            }
-        });
+        $booking->update($validated);
 
         return response()->json([
-            'message' => 'Booking updated successfully.',
+            'message' => 'Booking notes updated successfully.',
             'data' => $booking->fresh()->load([
-                'patient',
-                'dentist',
-                'clinic',
-                'bookingStatus',
+                'patient', 'dentist', 'clinic', 'bookingStatus',
                 'bookingServices.clinicServiceOffering.dentalService',
             ]),
         ]);
@@ -726,7 +674,7 @@ class BookingController extends Controller
     ): Collection {
         $offeringIds = collect($items)
             ->pluck('clinic_service_offering_id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->unique()
             ->values();
 
@@ -890,8 +838,8 @@ class BookingController extends Controller
         return $query->get()->filter(function ($booking) {
             $status = strtolower(
                 $booking->bookingStatus->code
-                ?? $booking->bookingStatus->name
-                ?? ''
+                    ?? $booking->bookingStatus->name
+                    ?? ''
             );
 
             return !in_array(
@@ -950,36 +898,438 @@ class BookingController extends Controller
     /**
      * Check booking access for patients, dentists and administrators.
      */
+    private function roleName(Request $request): string
+    {
+        $user = $request->user();
+        $roleValue = $user?->getAttribute('role');
+
+        return strtolower(trim(
+            is_string($roleValue)
+                ? $roleValue
+                : ($roleValue->name ?? '')
+        ));
+    }
+
+    private function clinicIdForUser(Request $request): ?int
+    {
+        $user = $request->user();
+        $role = $this->roleName($request);
+
+        if ($role === 'clinic') {
+            $id = Clinic::where('user_id', $user->id)->value('id');
+            return $id ? (int) $id : null;
+        }
+
+        if ($role === 'staff') {
+            $staff = Staff::where('user_id', $user->id)
+                ->where('is_active', true)
+                ->first();
+            return $staff?->clinic_id ? (int) $staff->clinic_id : null;
+        }
+
+        return null;
+    }
+
     private function canAccessBooking(
         Request $request,
         Booking $booking,
         bool $forUpdate = false
     ): bool {
         $user = $request->user();
-        $role = strtolower($user->role->name ?? '');
+        $role = $this->roleName($request);
 
         if (in_array($role, ['admin', 'superadmin'], true)) {
             return true;
         }
 
         if ($role === 'patient') {
-            $patientId = Patient::where('user_id', $user->id)
-                ->value('id');
-
+            $patientId = Patient::where('user_id', $user->id)->value('id');
             return $patientId !== null
                 && (int) $booking->patient_id === (int) $patientId
                 && !$forUpdate;
         }
 
         if ($role === 'dentist') {
-            $dentistId = Dentist::where('user_id', $user->id)
-                ->value('id');
-
+            $dentistId = Dentist::where('user_id', $user->id)->value('id');
             return $dentistId !== null
-                && (int) $booking->dentist_id === (int) $dentistId
-                && !$forUpdate;
+                && (int) $booking->dentist_id === (int) $dentistId;
         }
 
-        return false;
+        $clinicId = $this->clinicIdForUser($request);
+        return $clinicId !== null
+            && (int) $booking->clinic_id === $clinicId;
+    }
+
+    private function canManageBooking(Request $request, Booking $booking): bool
+    {
+        $role = $this->roleName($request);
+
+        if (in_array($role, ['admin', 'superadmin'], true)) {
+            return true;
+        }
+
+        $clinicId = $this->clinicIdForUser($request);
+        return $clinicId !== null && (int) $booking->clinic_id === $clinicId;
+    }
+
+    private function changeStatus(
+        Booking $booking,
+        string $targetCode,
+        int $actorId,
+        ?string $remarks = null
+    ): void {
+        $target = BookingStatus::where('code', $targetCode)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $previousId = (int) $booking->booking_status_id;
+        $booking->booking_status_id = $target->id;
+        $booking->save();
+
+        BookingStatusHistory::create([
+            'booking_id' => $booking->id,
+            'from_status_id' => $previousId,
+            'to_status_id' => $target->id,
+            'changed_by_user_id' => $actorId,
+            'remarks' => $remarks,
+        ]);
+    }
+
+    /**
+     * Change booking status using the role-aware transition matrix.
+     * PATCH /api/bookings/{id}/status
+     */
+    public function updateStatus(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'string', 'in:CONFIRMED,CHECKED_IN,IN_PROGRESS,COMPLETED,CANCELLED,NO_SHOW'],
+            'remarks' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $booking = Booking::with('bookingStatus')->findOrFail($id);
+        $role = $this->roleName($request);
+        $current = $booking->bookingStatus?->code;
+        $target = $validated['status'];
+
+        $clinicManager = $this->canManageBooking($request, $booking);
+        $assignedDentist = $role === 'dentist'
+            && Dentist::where('user_id', $request->user()->id)
+                ->whereKey($booking->dentist_id)->exists();
+
+        $allowed = [
+            'PENDING_CONFIRMATION' => ['CONFIRMED', 'CANCELLED'],
+            'CONFIRMED' => ['CHECKED_IN', 'CANCELLED', 'NO_SHOW'],
+            'CHECKED_IN' => ['IN_PROGRESS'],
+            'IN_PROGRESS' => ['COMPLETED'],
+        ];
+
+        if (!in_array($target, $allowed[$current] ?? [], true)) {
+            return response()->json([
+                'message' => "Transition from {$current} to {$target} is not permitted.",
+            ], 422);
+        }
+
+        $authorized = match ($target) {
+            'CONFIRMED', 'CHECKED_IN', 'CANCELLED', 'NO_SHOW' => $clinicManager
+                || in_array($role, ['admin', 'superadmin'], true),
+            'IN_PROGRESS', 'COMPLETED' => $assignedDentist
+                || in_array($role, ['admin', 'superadmin'], true),
+            default => false,
+        };
+
+        if (!$authorized) {
+            return response()->json([
+                'message' => 'You are not authorized to perform this status transition.',
+            ], 403);
+        }
+
+        DB::transaction(function () use ($id, $target, $request, $validated, $current, $allowed) {
+            $locked = Booking::with('bookingStatus')->lockForUpdate()->findOrFail($id);
+            if ($locked->bookingStatus?->code !== $current
+                || !in_array($target, $allowed[$locked->bookingStatus?->code] ?? [], true)) {
+                abort(409, 'The booking status changed. Refresh the booking and try again.');
+            }
+            $this->changeStatus(
+                $locked,
+                $target,
+                (int) $request->user()->id,
+                $validated['remarks'] ?? null
+            );
+        });
+
+        return response()->json([
+            'message' => 'Booking status updated successfully.',
+            'data' => Booking::with('bookingStatus')->findOrFail($id),
+        ]);
+    }
+
+    /**
+     * Read-only booking status audit trail.
+     * GET /api/bookings/{id}/history
+     */
+    public function history(Request $request, int $id): JsonResponse
+    {
+        $booking = Booking::findOrFail($id);
+
+        if (!$this->canAccessBooking($request, $booking)) {
+            return response()->json(['message' => 'Not authorized.'], 403);
+        }
+
+        return response()->json([
+            'data' => $booking->statusHistories()
+                ->with(['fromStatus', 'toStatus', 'changedBy'])
+                ->orderBy('created_at')
+                ->get(),
+        ]);
+    }
+
+    /**
+     * Patient submits cancellation or rescheduling request.
+     * POST /api/bookings/{id}/change-requests
+     */
+    public function storeChangeRequest(Request $request, int $id): JsonResponse
+    {
+        $booking = Booking::with('bookingStatus')->findOrFail($id);
+        $role = $this->roleName($request);
+
+        if (!$this->canAccessBooking($request, $booking)) {
+            return response()->json(['message' => 'Not authorized.'], 403);
+        }
+
+        if ($role !== 'patient') {
+            return response()->json([
+                'message' => 'Only the patient can submit cancellation or rescheduling requests.',
+            ], 403);
+        }
+
+        if (!in_array($booking->bookingStatus?->code, [
+            'PENDING_CONFIRMATION', 'CONFIRMED',
+        ], true)) {
+            return response()->json([
+                'message' => 'This booking can no longer be changed.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'request_type' => ['required', 'in:CANCELLATION,RESCHEDULE'],
+            'reason' => ['required', 'string', 'max:2000'],
+            'requested_booking_date' => [
+                'required_if:request_type,RESCHEDULE',
+                'nullable',
+                'date',
+                'after:now',
+            ],
+        ]);
+
+        // Lock the parent booking while checking/creating the request. This
+        // prevents two rapid submissions from creating duplicate pending rows.
+        $changeRequest = DB::transaction(function () use ($booking, $validated, $request) {
+            $lockedBooking = Booking::with('bookingStatus')
+                ->lockForUpdate()
+                ->findOrFail($booking->id);
+
+            if (!in_array($lockedBooking->bookingStatus?->code, [
+                'PENDING_CONFIRMATION', 'CONFIRMED',
+            ], true)) {
+                abort(409, 'This booking can no longer be changed.');
+            }
+
+            $pending = BookingChangeRequest::where('booking_id', $lockedBooking->id)
+                ->where('status', 'PENDING')
+                ->lockForUpdate()
+                ->exists();
+
+            if ($pending) {
+                abort(409, 'A pending change request already exists for this booking. Review that request before submitting another.');
+            }
+
+            // One request belongs to the whole booking, not to individual
+            // service lines. The selected services stay on the parent booking.
+            return BookingChangeRequest::create([
+                'booking_id' => $lockedBooking->id,
+                'requested_by_user_id' => $request->user()->id,
+                'request_type' => $validated['request_type'],
+                'reason' => $validated['reason'],
+                'requested_booking_date' => $validated['requested_booking_date'] ?? null,
+                'status' => 'PENDING',
+            ]);
+        });
+
+        return response()->json([
+            'message' => 'Booking change request submitted for clinic review.',
+            'data' => $changeRequest,
+        ], 201);
+    }
+
+    /**
+     * Review a patient cancellation/rescheduling request.
+     * PATCH /api/booking-change-requests/{requestId}/review
+     */
+    public function reviewChangeRequest(Request $request, int $requestId): JsonResponse
+    {
+        $validated = $request->validate([
+            'decision' => ['required', 'in:APPROVED,REJECTED'],
+            'review_remarks' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $changeRequest = BookingChangeRequest::with([
+            'booking.bookingServices.clinicServiceOffering',
+            'booking.bookingStatus',
+        ])->findOrFail($requestId);
+
+        if (!$this->canManageBooking($request, $changeRequest->booking)
+            && !in_array($this->roleName($request), ['admin', 'superadmin'], true)) {
+            return response()->json(['message' => 'Not authorized to review this request.'], 403);
+        }
+
+        $result = DB::transaction(function () use ($changeRequest, $validated, $request) {
+            $changeRequest = BookingChangeRequest::with([
+                'booking.bookingServices.clinicServiceOffering',
+                'booking.bookingStatus',
+            ])->lockForUpdate()->findOrFail($changeRequest->id);
+
+            if ($changeRequest->status !== 'PENDING') {
+                abort(409, 'This request has already been reviewed.');
+            }
+
+            $booking = Booking::with([
+                'bookingServices.clinicServiceOffering',
+                'bookingStatus',
+            ])->lockForUpdate()->findOrFail($changeRequest->booking_id);
+
+            if (!in_array($booking->bookingStatus?->code, [
+                'PENDING_CONFIRMATION', 'CONFIRMED',
+            ], true)) {
+                abort(409, 'The booking is no longer eligible for cancellation or rescheduling.');
+            }
+
+            if ($validated['decision'] === 'REJECTED') {
+                $changeRequest->update([
+                    'status' => 'REJECTED',
+                    'reviewed_by_user_id' => $request->user()->id,
+                    'reviewed_at' => now(),
+                    'review_remarks' => $validated['review_remarks'] ?? null,
+                ]);
+                return ['request' => $changeRequest->fresh(), 'replacement' => null];
+            }
+
+            if ($changeRequest->request_type === 'CANCELLATION') {
+                $this->changeStatus(
+                    $booking,
+                    'CANCELLED',
+                    (int) $request->user()->id,
+                    'Cancellation approved. ' . ($validated['review_remarks'] ?? '')
+                );
+                $replacement = null;
+            } else {
+                $newDate = Carbon::parse($changeRequest->requested_booking_date);
+                $items = $booking->bookingServices->map(fn ($line) => [
+                    'clinic_service_offering_id' => $line->clinic_service_offering_id,
+                    'quantity' => $line->quantity,
+                ])->values()->all();
+
+                if (empty($items)) {
+                    abort(422, 'Cannot reschedule a booking without service lines.');
+                }
+
+                Dentist::whereKey($booking->dentist_id)->lockForUpdate()->firstOrFail();
+                $services = $this->resolveServices($items, (int) $booking->clinic_id);
+                $this->assertDentistClinicSchedule(
+                    (int) $booking->dentist_id,
+                    (int) $booking->clinic_id,
+                    $newDate,
+                    $items,
+                    $services
+                );
+
+                $duration = $this->calculateDuration($items, $services);
+                $end = $newDate->copy()->addMinutes($duration);
+                $existing = $this->getBlockingBookings(
+                    (int) $booking->dentist_id,
+                    $newDate,
+                    (int) $booking->id
+                );
+
+                if ($this->hasBookingConflict($newDate, $end, $existing)) {
+                    abort(409, 'The requested rescheduling slot is no longer available.');
+                }
+
+                // Approval confirms the replacement booking immediately.
+                // The clinic should not need a second confirmation action.
+                $confirmedStatus = BookingStatus::where('code', 'CONFIRMED')
+                    ->where('is_active', true)->firstOrFail();
+
+                $replacement = Booking::create([
+                    'patient_id' => $booking->patient_id,
+                    'dentist_id' => $booking->dentist_id,
+                    'clinic_id' => $booking->clinic_id,
+                    'booking_date' => $newDate,
+                    'notes' => $booking->notes,
+                    'booking_status_id' => $confirmedStatus->id,
+                ]);
+
+                foreach ($booking->bookingServices as $line) {
+                    BookingService::create([
+                        'booking_id' => $replacement->id,
+                        'clinic_service_offering_id' => $line->clinic_service_offering_id,
+                        'quantity' => $line->quantity,
+                        'unit_price' => $line->unit_price,
+                    ]);
+                }
+
+                BookingStatusHistory::create([
+                    'booking_id' => $replacement->id,
+                    'from_status_id' => null,
+                    'to_status_id' => $confirmedStatus->id,
+                    'changed_by_user_id' => $request->user()->id,
+                    'remarks' => 'Rescheduling request #' . $changeRequest->id . ' approved. Replacement booking is confirmed.',
+                ]);
+
+                $this->changeStatus(
+                    $booking,
+                    'RESCHEDULED',
+                    (int) $request->user()->id,
+                    'Rescheduled to booking #' . $replacement->id
+                );
+            }
+
+            $changeRequest->update([
+                'status' => 'APPROVED',
+                'reviewed_by_user_id' => $request->user()->id,
+                'reviewed_at' => now(),
+                'review_remarks' => $validated['review_remarks'] ?? null,
+                'replacement_booking_id' => $replacement?->id,
+            ]);
+
+            return [
+                'request' => $changeRequest->fresh(),
+                'replacement' => $replacement,
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Booking change request reviewed successfully.',
+            'data' => $result['request'],
+            'replacement_booking' => $result['replacement']?->load('bookingStatus', 'bookingServices'),
+        ]);
+    }
+
+    /**
+     * List change requests for a booking.
+     * GET /api/bookings/{id}/change-requests
+     */
+    public function changeRequests(Request $request, int $id): JsonResponse
+    {
+        $booking = Booking::findOrFail($id);
+
+        if (!$this->canAccessBooking($request, $booking)) {
+            return response()->json(['message' => 'Not authorized.'], 403);
+        }
+
+        return response()->json([
+            'data' => $booking->changeRequests()->with([
+                'requestedBy', 'reviewedBy', 'replacementBooking',
+            ])->latest()->get(),
+        ]);
     }
 }

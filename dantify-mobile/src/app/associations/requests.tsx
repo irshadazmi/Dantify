@@ -2,12 +2,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
+
     FlatList,
     Pressable,
     RefreshControl,
-    View,
+    View
 } from "react-native";
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { Stack, useRouter } from "expo-router";
 
 import { useAuth } from "@/contexts/auth-context";
@@ -193,7 +195,7 @@ export default function AssociationRequestsScreen() {
 
     const respondToInvite = useCallback(
         (invite: ClinicDentistInvite, response: "accept" | "decline") => {
-            Alert.alert(
+            showAppDialog(
                 response === "accept" ? "Accept request?" : "Decline request?",
                 `Are you sure you want to ${response} this association request?`,
                 [
@@ -213,14 +215,14 @@ export default function AssociationRequestsScreen() {
 
                                     await loadInvites(1, true);
 
-                                    Alert.alert(
+                                    showAppDialog(
                                         "Success",
                                         response === "accept"
                                             ? "Association request accepted. You can configure its schedule separately."
                                             : "Association request declined.",
                                     );
                                 } catch (actionError) {
-                                    Alert.alert(
+                                    showAppDialog(
                                         "Unable to update request",
                                         getErrorMessage(actionError),
                                     );

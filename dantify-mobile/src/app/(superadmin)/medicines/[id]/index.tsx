@@ -3,11 +3,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import {
   ActivityIndicator,
-  Alert,
+
   Pressable,
   ScrollView,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -102,7 +104,7 @@ export default function MedicineDetailScreen() {
       const result = await getMedicine(medicineId);
       setMedicine(result);
     } catch (error) {
-      Alert.alert(
+      showAppDialog(
         'Unable to load medicine',
         getErrorMessage(error),
         [
@@ -130,7 +132,7 @@ export default function MedicineDetailScreen() {
 
     const nextStatus = !medicine.is_active;
 
-    Alert.alert(
+    showAppDialog(
       `${nextStatus ? 'Activate' : 'Deactivate'} Medicine`,
       `Are you sure you want to ${
         nextStatus ? 'activate' : 'deactivate'
@@ -159,14 +161,14 @@ export default function MedicineDetailScreen() {
 
       setMedicine(updated);
 
-      Alert.alert(
+      showAppDialog(
         'Status updated',
         `The medicine is now ${
           nextStatus ? 'active' : 'inactive'
         }.`,
       );
     } catch (error) {
-      Alert.alert(
+      showAppDialog(
         'Unable to update status',
         getErrorMessage(error),
       );

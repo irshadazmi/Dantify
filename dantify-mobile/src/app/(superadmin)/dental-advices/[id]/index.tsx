@@ -6,11 +6,13 @@ import React, {
 
 import {
   ActivityIndicator,
-  Alert,
+
   Pressable,
   ScrollView,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -105,7 +107,7 @@ export default function DentalAdviceDetailScreen() {
       const result = await getDentalAdvice(adviceId);
       setAdvice(result);
     } catch (error) {
-      Alert.alert(
+      showAppDialog(
         'Unable to load dental advice',
         getErrorMessage(error),
         [
@@ -133,7 +135,7 @@ export default function DentalAdviceDetailScreen() {
 
     const nextStatus = !advice.is_active;
 
-    Alert.alert(
+    showAppDialog(
       `${nextStatus ? 'Activate' : 'Deactivate'} Dental Advice`,
       `Are you sure you want to ${
         nextStatus ? 'activate' : 'deactivate'
@@ -162,14 +164,14 @@ export default function DentalAdviceDetailScreen() {
 
       setAdvice(updated);
 
-      Alert.alert(
+      showAppDialog(
         'Status updated',
         `Dental advice is now ${
           nextStatus ? 'active' : 'inactive'
         }.`,
       );
     } catch (error) {
-      Alert.alert(
+      showAppDialog(
         'Unable to update status',
         getErrorMessage(error),
       );

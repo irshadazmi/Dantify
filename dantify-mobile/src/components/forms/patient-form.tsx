@@ -1,5 +1,7 @@
 import React from 'react';
-import { Alert, Image, Pressable, View, Platform } from 'react-native';
+import { Image, Pressable, View, Platform } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import * as ImagePicker from 'expo-image-picker';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
@@ -448,7 +450,7 @@ export default function PatientForm({
             try {
               await onSubmit(createDefaultValues(values));
             } catch {
-              Alert.alert('Unable to save', 'The patient profile could not be saved. Please try again.');
+              showAppDialog('Unable to save', 'The patient profile could not be saved. Please try again.');
             }
           })();
         }}

@@ -22,7 +22,7 @@ export default function PublicBookingTabBar() {
       label: 'Appointments',
       icon: 'calendar',
       onPress: () => router.push(
-        (isAuthenticated ? '/appointments' : '/(auth)/login') as never,
+        (isAuthenticated ? '/booking' : '/(auth)/login') as never,
       ),
     },
     {

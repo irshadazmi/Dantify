@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  View,
+
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { useRouter } from 'expo-router';
 
 import { AppText } from '@/components/ui/app-text';
@@ -65,7 +67,7 @@ export default function CreateDentalAdviceScreen() {
 
       const advice = await createDentalAdvice(payload);
 
-      Alert.alert(
+      showAppDialog(
         'Dental Advice created',
         `"${advice.name}" has been added to the dental advice catalogue.`,
         [
@@ -77,7 +79,7 @@ export default function CreateDentalAdviceScreen() {
         ],
       );
     } catch (error) {
-      Alert.alert(
+      showAppDialog(
         'Unable to create dental advice',
         getErrorMessage(error),
       );

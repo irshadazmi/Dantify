@@ -2,12 +2,14 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+
   Pressable,
   ScrollView,
   Switch,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { useRouter } from 'expo-router';
 
 import { AppText } from '@/components/ui/app-text';
@@ -81,7 +83,7 @@ export default function CreateServiceScreen() {
 
     // Validate service name
     if (!serviceName) {
-      Alert.alert(
+      showAppDialog(
         'Service name required',
         'Please enter a service name.',
       );
@@ -94,7 +96,7 @@ export default function CreateServiceScreen() {
       !Number.isFinite(numericPrice) ||
       numericPrice < 0
     ) {
-      Alert.alert(
+      showAppDialog(
         'Invalid price',
         'Please enter a valid default price.',
       );
@@ -107,7 +109,7 @@ export default function CreateServiceScreen() {
       !Number.isInteger(numericDuration) ||
       numericDuration <= 0
     ) {
-      Alert.alert(
+      showAppDialog(
         'Invalid duration',
         'Duration must be a positive whole number of minutes.',
       );
@@ -127,7 +129,7 @@ export default function CreateServiceScreen() {
 
       await createDentalService(payload);
 
-      Alert.alert(
+      showAppDialog(
         'Service created',
         `"${serviceName}" has been added to the common catalogue.`,
         [
@@ -138,7 +140,7 @@ export default function CreateServiceScreen() {
         ],
       );
     } catch (error) {
-      Alert.alert(
+      showAppDialog(
         'Unable to create service',
         getErrorMessage(error),
       );

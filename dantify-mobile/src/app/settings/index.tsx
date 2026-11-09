@@ -3,13 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+
   Pressable,
   ScrollView,
   Switch,
   Text,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { useRouter } from 'expo-router';
 
 import { useStyles } from '@/styles/styles';
@@ -92,7 +94,7 @@ export default function Settings() {
         console.error('Failed to load settings:', error);
 
         if (mounted) {
-          Alert.alert(
+          showAppDialog(
             'Settings',
             'Could not load saved settings. Default settings will be used.',
           );
@@ -152,7 +154,7 @@ export default function Settings() {
         }
       }
 
-      Alert.alert(
+      showAppDialog(
         'Save Failed',
         'Your setting could not be saved. Please try again.',
       );
@@ -332,7 +334,7 @@ export default function Settings() {
           style={styles.card}
           accessibilityRole="button"
           onPress={() =>
-            Alert.alert(
+            showAppDialog(
               'Change Password',
               'Password change is not yet connected to the API.',
             )

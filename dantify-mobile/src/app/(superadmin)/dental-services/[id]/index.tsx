@@ -2,11 +2,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+
   Pressable,
   ScrollView,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AppText } from '@/components/ui/app-text';
@@ -93,7 +95,7 @@ export default function DentalServiceDetailScreen() {
       const result = await getDentalService(serviceId);
       setService(result);
     } catch (error) {
-      Alert.alert(
+      showAppDialog(
         'Unable to load service',
         getErrorMessage(error),
         [
@@ -123,7 +125,7 @@ export default function DentalServiceDetailScreen() {
     const nextStatus = !service.is_active;
     const action = nextStatus ? 'activate' : 'deactivate';
 
-    Alert.alert(
+    showAppDialog(
       `${nextStatus ? 'Activate' : 'Deactivate'} Service`,
       `Are you sure you want to ${action} "${service.name}"?`,
       [
@@ -150,12 +152,12 @@ export default function DentalServiceDetailScreen() {
 
       setService(updatedService);
 
-      Alert.alert(
+      showAppDialog(
         'Status updated',
         `The service is now ${nextStatus ? 'active' : 'inactive'}.`,
       );
     } catch (error) {
-      Alert.alert(
+      showAppDialog(
         'Unable to update status',
         getErrorMessage(error),
       );

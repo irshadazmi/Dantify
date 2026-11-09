@@ -7,6 +7,11 @@ import type {
   BookingListResponse,
   BookingListParams,
   BookingServicePayload,
+  BookingStatusHistory,
+  BookingChangeRequest,
+  BookingChangeRequestPayload,
+  BookingStatusUpdatePayload,
+  BookingChangeRequestReviewPayload,
 } from '@/types/booking';
 
 const BASE_URL = '/bookings';
@@ -42,6 +47,7 @@ export interface BookingAvailabilityParams {
   clinic_id: number;
   date: string;
   services: BookingServicePayload[];
+  exclude_booking_id?: number;
 }
 
 export interface BookingAvailableSlot {
@@ -68,6 +74,7 @@ export interface BookingCheckSlotParams {
   date: string;
   start_time: string;
   services: BookingServicePayload[];
+  exclude_booking_id?: number;
 }
 
 export interface BookingCheckSlotResponse {
@@ -127,6 +134,7 @@ export const bookingService = {
           clinic_id: params.clinic_id,
           date: params.date,
           ...buildServiceQueryParams(params.services),
+          ...(params.exclude_booking_id ? { exclude_booking_id: params.exclude_booking_id } : {}),
         },
       },
     );
@@ -145,6 +153,7 @@ export const bookingService = {
           date: params.date,
           start_time: params.start_time,
           ...buildServiceQueryParams(params.services),
+          ...(params.exclude_booking_id ? { exclude_booking_id: params.exclude_booking_id } : {}),
         },
       },
     );
@@ -163,6 +172,50 @@ export const bookingService = {
     const response = await api.put<BookingResponse>(
       `${BASE_URL}/${bookingId}`,
       payload,
+    );
+    return response.data;
+  },
+
+  async updateStatus(
+    bookingId: number,
+    payload: BookingStatusUpdatePayload,
+  ): Promise<BookingResponse> {
+    const response = await api.patch<BookingResponse>(
+      `${BASE_URL}/${bookingId}/status`, payload,
+    );
+    return response.data;
+  },
+
+  async getHistory(bookingId: number): Promise<{ data: BookingStatusHistory[] }> {
+    const response = await api.get<{ data: BookingStatusHistory[] }>(
+      `${BASE_URL}/${bookingId}/history`,
+    );
+    return response.data;
+  },
+
+  async getChangeRequests(bookingId: number): Promise<{ data: BookingChangeRequest[] }> {
+    const response = await api.get<{ data: BookingChangeRequest[] }>(
+      `${BASE_URL}/${bookingId}/change-requests`,
+    );
+    return response.data;
+  },
+
+  async createChangeRequest(
+    bookingId: number,
+    payload: BookingChangeRequestPayload,
+  ): Promise<{ message: string; data: BookingChangeRequest }> {
+    const response = await api.post<{ message: string; data: BookingChangeRequest }>(
+      `${BASE_URL}/${bookingId}/change-requests`, payload,
+    );
+    return response.data;
+  },
+
+  async reviewChangeRequest(
+    requestId: number,
+    payload: BookingChangeRequestReviewPayload,
+  ): Promise<{ message: string; data: BookingChangeRequest; replacement_booking?: unknown }> {
+    const response = await api.patch(
+      `/booking-change-requests/${requestId}/review`, payload,
     );
     return response.data;
   },

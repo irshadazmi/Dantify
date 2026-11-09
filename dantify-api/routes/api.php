@@ -112,6 +112,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/bookings/{id}', [BookingController::class, 'update']);
 
     // --------------------------------------------------
+    // BOOKING LIFECYCLE — PHASE 7
+    // --------------------------------------------------
+
+    Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']);
+    Route::get('/bookings/{id}/history', [BookingController::class, 'history']);
+
+    Route::post('/bookings/{id}/change-requests', [BookingController::class, 'storeChangeRequest']);
+    Route::get('/bookings/{id}/change-requests', [BookingController::class, 'changeRequests']);
+    Route::patch('/booking-change-requests/{requestId}/review', [BookingController::class, 'reviewChangeRequest']);
+
+    // --------------------------------------------------
     // SERVICE MANAGEMENT
     // --------------------------------------------------
 

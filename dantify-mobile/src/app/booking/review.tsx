@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+
   Pressable,
   ScrollView,
   Text,
   TextInput,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useAppColors } from '@/hooks/use-app-colors';
@@ -268,7 +270,7 @@ export default function BookingReviewScreen() {
   const confirmBooking = async () => {
     if (submitting) return;
     if (roleName(user?.role) !== 'patient') {
-      Alert.alert(
+      showAppDialog(
         'Patient account required',
         'Please sign in with a patient account to book an appointment.',
       );

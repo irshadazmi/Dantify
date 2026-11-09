@@ -6,11 +6,13 @@ import React, {
 
 import {
   ActivityIndicator,
-  Alert,
+
   Pressable,
   ScrollView,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 
 import { useRouter } from 'expo-router';
 
@@ -28,6 +30,7 @@ import {
 } from '@/services/dental-advice-service';
 
 import type { DentalAdvice } from '@/types/dental-advice';
+import { ScreenHeader } from '@/components/ui/screen-header';
 
 function getErrorMessage(error: unknown): string {
   const err = error as {
@@ -109,7 +112,7 @@ export default function DentalAdvicesScreen() {
 
     const nextStatus = !advice.is_active;
 
-    Alert.alert(
+    showAppDialog(
       `${nextStatus ? 'Activate' : 'Deactivate'} dental advice`,
       `Are you sure you want to ${
         nextStatus ? 'activate' : 'deactivate'
@@ -147,7 +150,7 @@ export default function DentalAdvicesScreen() {
         ),
       );
     } catch (err) {
-      Alert.alert(
+      showAppDialog(
         'Unable to update dental advice status',
         getErrorMessage(err),
       );
@@ -185,27 +188,12 @@ export default function DentalAdvicesScreen() {
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.screenHeader}>
-          <View style={styles.screenHeaderContent}>
-            <AppText variant="title">Dental Advice</AppText>
-
-            <AppText variant="muted">
-              Manage the common dental advice catalogue used for
-              prescriptions.
-            </AppText>
-          </View>
-
-          <Pressable
-            onPress={() => router.push('/dental-advices/create')}
-            accessibilityRole="button"
-            accessibilityLabel="Add dental advice"
-            style={styles.smallButton}
-          >
-            <AppText style={styles.smallButtonText}>
-              + Add
-            </AppText>
-          </Pressable>
-        </View>
+        <ScreenHeader
+          title="Dental Services"
+          subtitle="Manage the master dental service catalogue."
+          actionTitle="+ Add"
+          onAction={() => router.push('/dental-advices/create')}
+        />
 
         <AppInput
           style={styles.searchInput}

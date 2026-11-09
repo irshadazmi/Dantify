@@ -129,6 +129,7 @@ export const useStyles = () => {
     /* ========== INPUTS ========== */
     textInput: {
       height: 46,
+      minHeight: 46,
       borderColor: COLORS.primary,
       borderWidth: 1.5,
       borderRadius: 6,
@@ -145,6 +146,7 @@ export const useStyles = () => {
     },
     dateInput: {
       height: 46,
+      minHeight: 46,
       borderColor: COLORS.primary,
       borderWidth: 1.5,
       borderRadius: 6,
@@ -169,8 +171,9 @@ export const useStyles = () => {
     /* ========== BUTTONS ========== */
 
     button: {
+      minHeight: 46,
       backgroundColor: COLORS.primary,
-      paddingVertical: 10,
+      paddingVertical: 8,
       paddingHorizontal: 12,
       borderRadius: 6,
       marginVertical: 10,
@@ -202,9 +205,10 @@ export const useStyles = () => {
     },
 
     smallButton: {
+      minHeight: 46,
       backgroundColor: COLORS.primary,
       paddingHorizontal: 14,
-      paddingVertical: 6,
+      paddingVertical: 8,
       borderRadius: 8,
 
       alignItems: "center",
@@ -278,6 +282,7 @@ export const useStyles = () => {
     /* ========== DROPDOWN & PICKER ========== */
     dropdownWrapper: {
       height: 46,
+      minHeight: 46,
       borderWidth: 1.5,
       borderColor: COLORS.primary,
       backgroundColor: COLORS.card,
@@ -302,7 +307,7 @@ export const useStyles = () => {
       color: COLORS.text,
     },
     picker: {
-      height: 48,
+      height: 46,
       width: "100%",
       color: COLORS.text,
     },
@@ -632,8 +637,11 @@ export const useStyles = () => {
       gap: 8,
     } as any,
     actionButton: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
+      minHeight: 46,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      alignItems: "center",
+      justifyContent: "center",
       borderRadius: 6,
       marginLeft: 8,
     },

@@ -1,8 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
   View,
@@ -61,6 +63,8 @@ export default function AddClinicServiceScreen() {
   const styles = useStyles();
   const COLORS = useAppColors();
 
+  const listRef = useRef<FlatList<DentalService>>(null);
+
   const [catalogue, setCatalogue] = useState<DentalService[]>([]);
   const [clinicOfferings, setClinicOfferings] = useState<ClinicServiceOffering[]>([]);
   const [search, setSearch] = useState('');
@@ -72,6 +76,17 @@ export default function AddClinicServiceScreen() {
   const [selectedService, setSelectedService] = useState<DentalService | null>(null);
   const [clinicPrice, setClinicPrice] = useState('');
   const [clinicDuration, setClinicDuration] = useState('');
+  const [dialog, setDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    kind: 'success' | 'error' | 'info';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    kind: 'info',
+  });
 
   const loadCatalogue = useCallback(async () => {
     try {
@@ -120,6 +135,18 @@ export default function AddClinicServiceScreen() {
     setClinicDuration(String(service.duration_minutes ?? ''));
   };
 
+  // The configuration form is the FlatList header. When a service is selected
+  // near the bottom of the list, bring that header into view automatically.
+  useEffect(() => {
+    if (!selectedService) return;
+
+    const frame = requestAnimationFrame(() => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [selectedService?.id]);
+
   const cancelSelection = () => {
     setSelectedService(null);
     setClinicPrice('');
@@ -133,12 +160,22 @@ export default function AddClinicServiceScreen() {
     const duration = Number(clinicDuration);
 
     if (!clinicPrice.trim() || !Number.isFinite(price) || price < 0) {
-      Alert.alert('Invalid price', 'Enter a valid clinic price (zero or greater).');
+      setDialog({
+        visible: true,
+        title: 'Invalid price',
+        message: 'Enter a valid clinic price (zero or greater).',
+        kind: 'error',
+      });
       return;
     }
 
     if (!clinicDuration.trim() || !Number.isInteger(duration) || duration <= 0) {
-      Alert.alert('Invalid duration', 'Enter a positive whole number of minutes.');
+      setDialog({
+        visible: true,
+        title: 'Invalid duration',
+        message: 'Enter a positive whole number of minutes.',
+        kind: 'error',
+      });
       return;
     }
 
@@ -153,9 +190,19 @@ export default function AddClinicServiceScreen() {
       const name = selectedService.name;
       cancelSelection();
       await loadCatalogue();
-      Alert.alert('Service added', `${name} has been added to your clinic offerings.`);
+      setDialog({
+        visible: true,
+        title: 'Service added',
+        message: `${name} has been added to your clinic offerings.`,
+        kind: 'success',
+      });
     } catch (err) {
-      Alert.alert('Unable to add service', getErrorMessage(err));
+      setDialog({
+        visible: true,
+        title: 'Unable to add service',
+        message: getErrorMessage(err),
+        kind: 'error',
+      });
     } finally {
       setSaving(false);
     }
@@ -284,6 +331,11 @@ export default function AddClinicServiceScreen() {
   };
 
   return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+    >
     <View style={styles.container}>
       <ScreenHeader
         title="Add Clinic Services"
@@ -320,12 +372,14 @@ export default function AddClinicServiceScreen() {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={catalogue}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderService}
           ListHeaderComponent={renderConfiguration}
           contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -345,6 +399,121 @@ export default function AddClinicServiceScreen() {
           }
         />
       )}
+
+      <Modal
+        visible={dialog.visible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() =>
+          setDialog((current) => ({ ...current, visible: false }))
+        }
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.62)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 24,
+          }}
+        >
+          <View
+            accessibilityRole="alert"
+            style={{
+              width: '100%',
+              maxWidth: 420,
+              backgroundColor: COLORS.surface,
+              borderColor: COLORS.border,
+              borderWidth: 1,
+              borderRadius: 20,
+              padding: 22,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.25,
+              shadowRadius: 18,
+              elevation: 12,
+            }}
+          >
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 14,
+                backgroundColor:
+                  dialog.kind === 'success'
+                    ? COLORS.success
+                    : dialog.kind === 'error'
+                      ? COLORS.danger
+                      : COLORS.primary,
+              }}
+            >
+              <AppText
+                style={{
+                  color: COLORS.badgeText,
+                  fontSize: 25,
+                  fontWeight: '800',
+                }}
+              >
+                {dialog.kind === 'success' ? '✓' : dialog.kind === 'error' ? '!' : 'i'}
+              </AppText>
+            </View>
+
+            <AppText
+              style={{
+                color: COLORS.text,
+                fontSize: 20,
+                fontWeight: '800',
+                marginBottom: 8,
+              }}
+            >
+              {dialog.title}
+            </AppText>
+
+            <AppText
+              style={{
+                color: COLORS.textSecondary,
+                fontSize: 14,
+                lineHeight: 21,
+              }}
+            >
+              {dialog.message}
+            </AppText>
+
+            <View style={{ alignItems: 'flex-end', marginTop: 22 }}>
+              <Pressable
+                onPress={() =>
+                  setDialog((current) => ({ ...current, visible: false }))
+                }
+                accessibilityRole="button"
+                style={{
+                  minWidth: 104,
+                  minHeight: 44,
+                  paddingHorizontal: 20,
+                  borderRadius: 12,
+                  backgroundColor: COLORS.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AppText
+                  style={{
+                    color: COLORS.badgeText,
+                    fontWeight: '800',
+                    fontSize: 14,
+                  }}
+                >
+                  OK
+                </AppText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
+    </KeyboardAvoidingView>
   );
 }

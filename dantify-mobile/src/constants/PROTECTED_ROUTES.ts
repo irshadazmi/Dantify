@@ -7,7 +7,7 @@ export const PROTECTED_ROUTES = [
   '/clinics',
   '/dentists',
   '/patients',
-  '/appointments',
+  '/booking',
   '/payments',
   '/ai',
   '/insights',

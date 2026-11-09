@@ -1,5 +1,7 @@
 import React from 'react';
-import { Alert, Image, Pressable, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import * as ImagePicker from 'expo-image-picker';
 import {
   Controller,
@@ -313,7 +315,7 @@ export default function ClinicForm({
         onPress={() => {
           void handleSubmit(async (values) => {
             try { await onSubmit(createDefaultValues(values)); }
-            catch { Alert.alert('Unable to save', 'The clinic profile could not be saved. Please try again.'); }
+            catch { showAppDialog('Unable to save', 'The clinic profile could not be saved. Please try again.'); }
           })();
         }}
         disabled={saving}

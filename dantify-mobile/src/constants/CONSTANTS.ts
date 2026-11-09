@@ -107,30 +107,25 @@ export type FeedbackStatus =
 
   /* ======================================================
    APPOINTMENT STATUS CONSTANTS
+   IDs match the eight-status BookingStatusSeeder insertion order.
+   Prefer status codes from the API for business logic.
 ====================================================== */
 
 export const APPOINTMENT_STATUSES = {
-  SCHEDULED: { id: 1, label: "Scheduled" },
-  CONFIRMED: { id: 2, label: "Confirmed" },
-  CHECKED_IN: { id: 3, label: "Checked In" },
-  IN_PROGRESS: { id: 4, label: "In Progress" },
-
-  COMPLETED: { id: 5, label: "Completed" },
-  CANCELLED: { id: 6, label: "Cancelled" },
-  NO_SHOW: { id: 7, label: "No Show" },
-  RESCHEDULED: { id: 8, label: "Rescheduled" },
-
-  PENDING_CONFIRMATION: { id: 9, label: "Pending Confirmation" },
-  AWAITING_PAYMENT: { id: 10, label: "Awaiting Payment" },
-  FOLLOW_UP_REQUIRED: { id: 11, label: "Follow-up Required" },
-  BLOCKED: { id: 12, label: "Blocked" },
+  PENDING_CONFIRMATION: { id: 1, code: 'PENDING_CONFIRMATION', label: 'Pending Confirmation' },
+  CONFIRMED: { id: 2, code: 'CONFIRMED', label: 'Confirmed' },
+  CHECKED_IN: { id: 3, code: 'CHECKED_IN', label: 'Checked In' },
+  IN_PROGRESS: { id: 4, code: 'IN_PROGRESS', label: 'In Progress' },
+  COMPLETED: { id: 5, code: 'COMPLETED', label: 'Completed' },
+  CANCELLED: { id: 6, code: 'CANCELLED', label: 'Cancelled' },
+  NO_SHOW: { id: 7, code: 'NO_SHOW', label: 'No Show' },
+  RESCHEDULED: { id: 8, code: 'RESCHEDULED', label: 'Rescheduled' },
 } as const;
 
-/** Numeric union: 1 | 2 | ... | 12 */
 export type AppointmentStatusId =
-  typeof APPOINTMENT_STATUSES[keyof typeof APPOINTMENT_STATUSES]["id"];
+  typeof APPOINTMENT_STATUSES[keyof typeof APPOINTMENT_STATUSES]['id'];
 
-/** Helper array (filters, dropdowns, chips) */
-export const APPOINTMENT_STATUS_OPTIONS = Object.values(
-  APPOINTMENT_STATUSES
-);
+export type AppointmentStatusCode =
+  typeof APPOINTMENT_STATUSES[keyof typeof APPOINTMENT_STATUSES]['code'];
+
+export const APPOINTMENT_STATUS_OPTIONS = Object.values(APPOINTMENT_STATUSES);

@@ -163,6 +163,8 @@ export interface BookingAvailabilityParams {
   clinic_id: number;
   date: string; // YYYY-MM-DD
   services: BookingServicePayload[];
+  /** Exclude the current booking while checking a reschedule slot. */
+  exclude_booking_id?: number;
 }
 
 /* ======================================================
@@ -231,6 +233,61 @@ export type BookingCheckSlotResponse =
 ====================================================== */
 
 export interface BookingListParams extends PaginationParams {}
+
+/* ======================================================
+   PHASE 7 — BOOKING LIFECYCLE
+====================================================== */
+
+export interface BookingStatusHistory {
+  id: number;
+  booking_id: number;
+  from_status_id: number | null;
+  to_status_id: number;
+  changed_by_user_id: number | null;
+  remarks: string | null;
+  created_at: string;
+  from_status?: BookingStatus | null;
+  to_status?: BookingStatus;
+  changed_by?: { id: number; name?: string; email?: string } | null;
+}
+
+export type BookingChangeRequestType = 'CANCELLATION' | 'RESCHEDULE';
+export type BookingChangeRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface BookingChangeRequest {
+  id: number;
+  booking_id: number;
+  requested_by_user_id: number;
+  request_type: BookingChangeRequestType;
+  reason: string;
+  requested_booking_date: string | null;
+  status: BookingChangeRequestStatus;
+  reviewed_by_user_id: number | null;
+  reviewed_at: string | null;
+  review_remarks: string | null;
+  replacement_booking_id: number | null;
+  created_at: string;
+  updated_at: string;
+  requested_by?: { id: number; name?: string; email?: string };
+  reviewed_by?: { id: number; name?: string; email?: string } | null;
+  replacement_booking?: Booking | null;
+}
+
+export interface BookingChangeRequestPayload {
+  request_type: BookingChangeRequestType;
+  reason: string;
+  requested_booking_date?: string;
+}
+
+export interface BookingStatusUpdatePayload {
+  status: string;
+  remarks?: string;
+}
+
+export interface BookingChangeRequestReviewPayload {
+  decision: 'APPROVED' | 'REJECTED';
+  review_remarks?: string;
+}
 
 /* ======================================================
    API RESPONSES

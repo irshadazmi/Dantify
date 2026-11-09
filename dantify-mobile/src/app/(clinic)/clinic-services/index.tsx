@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+
   FlatList,
   Pressable,
   RefreshControl,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/contexts/auth-context';
@@ -114,7 +116,7 @@ export default function ClinicServicesScreen() {
     const nextStatus = !item.is_active;
     const serviceName = item.dental_service?.name ?? 'this service';
 
-    Alert.alert(
+    showAppDialog(
       `${nextStatus ? 'Activate' : 'Deactivate'} service`,
       `Are you sure you want to ${nextStatus ? 'activate' : 'deactivate'} "${serviceName}" for your clinic?`,
       [
@@ -128,7 +130,7 @@ export default function ClinicServicesScreen() {
               await updateClinicServiceOfferingStatus(item.id, nextStatus);
               await loadOfferings();
             } catch (err) {
-              Alert.alert('Unable to update status', getErrorMessage(err));
+              showAppDialog('Unable to update status', getErrorMessage(err));
             } finally {
               setUpdatingId(null);
             }

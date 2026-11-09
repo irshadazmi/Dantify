@@ -2,13 +2,15 @@
 
 import React, { useState } from 'react';
 import {
-  Alert,
+
   Linking,
   Pressable,
   ScrollView,
   Text,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 
 import { useStyles } from '@/styles/styles';
 import { useAppColors } from '@/hooks/use-app-colors';
@@ -72,7 +74,7 @@ export default function Help() {
       if (supported) {
         await Linking.openURL(url);
       } else {
-        Alert.alert(
+        showAppDialog(
           'Contact Support',
           `Please email ${email}`,
         );
@@ -80,7 +82,7 @@ export default function Help() {
     } catch (error) {
       console.error('Unable to open email application:', error);
 
-      Alert.alert(
+      showAppDialog(
         'Contact Support',
         `Please email ${email}`,
       );

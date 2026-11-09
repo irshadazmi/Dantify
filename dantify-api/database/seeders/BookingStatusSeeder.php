@@ -18,13 +18,6 @@ class BookingStatusSeeder extends Seeder
                 'is_terminal' => false,
             ],
             [
-                'code' => 'SCHEDULED',
-                'name' => 'Scheduled',
-                'description' => 'Booking has been scheduled.',
-                'is_active' => true,
-                'is_terminal' => false,
-            ],
-            [
                 'code' => 'CONFIRMED',
                 'name' => 'Confirmed',
                 'description' => 'Booking has been confirmed.',

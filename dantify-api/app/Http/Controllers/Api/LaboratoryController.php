@@ -6,6 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Laboratory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use RuntimeException;
 
 class LaboratoryController extends Controller
 {
@@ -59,7 +63,16 @@ class LaboratoryController extends Controller
                 'max:100',
             ],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'profile_photo' => [
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
         ]);
+
+        // Uploaded files are stored separately; never mass-assign the file.
+        unset($validated['profile_photo']);
 
         $laboratory = Laboratory::create([
             ...$validated,
@@ -67,9 +80,18 @@ class LaboratoryController extends Controller
             'is_active' => true,
         ]);
 
+        if ($request->hasFile('profile_photo')) {
+            $path = $this->storeProfilePhoto(
+                $request->file('profile_photo'),
+                $laboratory
+            );
+
+            $laboratory->update(['profile_photo_path' => $path]);
+        }
+
         return response()->json([
             'message' => 'Laboratory profile created successfully.',
-            'data' => $laboratory,
+            'data' => $laboratory->fresh(),
         ], 201);
     }
 
@@ -140,6 +162,13 @@ class LaboratoryController extends Controller
             ],
             'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'is_active' => ['sometimes', 'boolean'],
+            'profile_photo' => [
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
+            'remove_profile_photo' => ['sometimes', 'boolean'],
         ]);
 
         // Only an authorized administrator should be able to deactivate
@@ -148,7 +177,34 @@ class LaboratoryController extends Controller
             abort(403, 'You are not authorized to change laboratory status.');
         }
 
-        $laboratory->update($validated);
+        $oldPhotoPath = $laboratory->profile_photo_path;
+        $removePhoto = (bool) ($validated['remove_profile_photo'] ?? false);
+
+        unset(
+            $validated['profile_photo'],
+            $validated['remove_profile_photo']
+        );
+
+        // Save profile fields first so a simultaneous name/photo update uses
+        // the latest laboratory name when generating the photo filename.
+        $laboratory->fill($validated);
+        $laboratory->save();
+
+        if ($request->hasFile('profile_photo')) {
+            $newPhotoPath = $this->storeProfilePhoto(
+                $request->file('profile_photo'),
+                $laboratory
+            );
+
+            $laboratory->update(['profile_photo_path' => $newPhotoPath]);
+
+            if ($oldPhotoPath && $oldPhotoPath !== $newPhotoPath) {
+                Storage::disk('public')->delete($oldPhotoPath);
+            }
+        } elseif ($removePhoto && $oldPhotoPath) {
+            $laboratory->update(['profile_photo_path' => null]);
+            Storage::disk('public')->delete($oldPhotoPath);
+        }
 
         return response()->json([
             'message' => 'Laboratory profile updated successfully.',
@@ -165,7 +221,13 @@ class LaboratoryController extends Controller
     ): JsonResponse {
         $this->authorizeLaboratoryAccess($request, $laboratory);
 
+        $photoPath = $laboratory->profile_photo_path;
+
         $laboratory->delete();
+
+        if ($photoPath) {
+            Storage::disk('public')->delete($photoPath);
+        }
 
         return response()->json([
             'message' => 'Laboratory profile deleted successfully.',
@@ -195,6 +257,36 @@ class LaboratoryController extends Controller
             'next_step' => 'dashboard',
             'data' => $laboratory,
         ]);
+    }
+
+    /**
+     * Store the photo using:
+     * profiles/laboratories/{user_id}-{slug}.{extension}
+     */
+    private function storeProfilePhoto(
+        UploadedFile $photo,
+        Laboratory $laboratory
+    ): string {
+        $slug = Str::slug($laboratory->name) ?: 'laboratory';
+        $extension = strtolower($photo->extension() ?: 'jpg');
+
+        if ($extension === 'jpeg') {
+            $extension = 'jpg';
+        }
+
+        $filename = $laboratory->user_id . '-' . $slug . '.' . $extension;
+
+        $path = $photo->storeAs(
+            'profiles/laboratories',
+            $filename,
+            'public'
+        );
+
+        if (!$path) {
+            throw new RuntimeException('Unable to store the laboratory profile photo.');
+        }
+
+        return $path;
     }
 
     private function authorizeLaboratoryAccess(

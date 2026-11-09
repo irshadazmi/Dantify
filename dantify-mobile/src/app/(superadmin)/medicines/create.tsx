@@ -2,9 +2,11 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  View,
+
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { useRouter } from 'expo-router';
 
 import { AppText } from '@/components/ui/app-text';
@@ -66,7 +68,7 @@ export default function CreateMedicineScreen() {
 
       const medicine = await createMedicine(payload);
 
-      Alert.alert(
+      showAppDialog(
         'Medicine created',
         `"${medicine.name}" has been added to the medicine catalogue.`,
         [
@@ -78,7 +80,7 @@ export default function CreateMedicineScreen() {
         ],
       );
     } catch (error) {
-      Alert.alert(
+      showAppDialog(
         'Unable to create medicine',
         getErrorMessage(error),
       );

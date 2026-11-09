@@ -7,11 +7,13 @@ import React, {
 
 import {
   ActivityIndicator,
-  Alert,
+
   Pressable,
   ScrollView,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 
 import { useRouter } from 'expo-router';
 
@@ -110,7 +112,7 @@ export default function MedicinesScreen() {
 
     const nextStatus = !medicine.is_active;
 
-    Alert.alert(
+    showAppDialog(
       `${nextStatus ? 'Activate' : 'Deactivate'} medicine`,
       `Are you sure you want to ${
         nextStatus ? 'activate' : 'deactivate'
@@ -148,7 +150,7 @@ export default function MedicinesScreen() {
         ),
       );
     } catch (err) {
-      Alert.alert(
+      showAppDialog(
         'Unable to update medicine status',
         getErrorMessage(err),
       );

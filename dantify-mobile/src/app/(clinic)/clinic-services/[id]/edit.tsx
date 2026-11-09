@@ -1,11 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AppText } from '@/components/ui/app-text';
@@ -103,12 +107,12 @@ export default function EditClinicServiceScreen() {
     const numericDuration = Number(duration);
 
     if (!price.trim() || !Number.isFinite(numericPrice) || numericPrice < 0) {
-      Alert.alert('Invalid price', 'Enter a valid clinic price (zero or greater).');
+      showAppDialog('Invalid price', 'Enter a valid clinic price (zero or greater).');
       return;
     }
 
     if (!duration.trim() || !Number.isInteger(numericDuration) || numericDuration <= 0) {
-      Alert.alert('Invalid duration', 'Enter a positive whole number of minutes.');
+      showAppDialog('Invalid duration', 'Enter a positive whole number of minutes.');
       return;
     }
 
@@ -118,13 +122,13 @@ export default function EditClinicServiceScreen() {
         price: numericPrice,
         duration_minutes: numericDuration,
       });
-      Alert.alert(
+      showAppDialog(
         'Offering updated',
         `${offering.dental_service?.name ?? 'Clinic service'} has been updated.`,
         [{ text: 'OK', onPress: () => router.back() }],
       );
     } catch (err) {
-      Alert.alert('Unable to update offering', getErrorMessage(err));
+      showAppDialog('Unable to update offering', getErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -174,11 +178,20 @@ export default function EditClinicServiceScreen() {
   const service = offering.dental_service;
 
   return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+    >
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Edit Clinic Offering' }} />
       <ScrollView
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: 40 },
+        ]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
       >
         <AppText variant="title">Edit Clinic Offering</AppText>
         <AppText variant="muted">
@@ -275,5 +288,6 @@ export default function EditClinicServiceScreen() {
         </View>
       </ScrollView>
     </View>
+    </KeyboardAvoidingView>
   );
 }

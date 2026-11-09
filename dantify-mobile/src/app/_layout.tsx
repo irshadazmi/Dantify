@@ -29,6 +29,7 @@ import { ThemeProvider } from "@/contexts/theme-context";
 
 import TabBar from "@/components/tab-bar";
 import CustomDrawer from "@/components/custom-drawer";
+import { AppDialogHost } from "@/components/ui/app-dialog";
 
 import {
   PUBLIC_ROUTES,
@@ -484,7 +485,10 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AuthProvider>
           <ThemeProvider>
-            <AppShell />
+            <>
+              <AppShell />
+              <AppDialogHost />
+            </>
           </ThemeProvider>
         </AuthProvider>
       </SafeAreaProvider>

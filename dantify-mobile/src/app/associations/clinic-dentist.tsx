@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+
   FlatList,
   Pressable,
   RefreshControl,
   TextInput,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from "@/components/ui/app-text";
@@ -74,7 +76,7 @@ export default function ClinicDentistScreen() {
       const message = getErrorMessage(error);
       setItems([]);
       if (error?.response?.status === 404) setProfileError(message);
-      else Alert.alert('Unable to load', message);
+      else showAppDialog('Unable to load', message);
     } finally {
       if (currentRequestId === requestId.current) {
         setLoading(false);
@@ -107,17 +109,17 @@ export default function ClinicDentistScreen() {
 
   const sendInvite = async (item: Candidate) => {
     if (!profileId) {
-      Alert.alert('Profile required', 'Complete your profile before sending an association request.');
+      showAppDialog('Profile required', 'Complete your profile before sending an association request.');
       return;
     }
 
     setSendingId(item.id);
     try {
       await clinicDentistInviteService.inviteDentist(profileId, { dentist_id: item.id });
-      Alert.alert('Request sent', 'Your association request has been sent.');
+      showAppDialog('Request sent', 'Your association request has been sent.');
       await loadItems(query.trim(), true);
     } catch (error: any) {
-      Alert.alert('Request not sent', getErrorMessage(error));
+      showAppDialog('Request not sent', getErrorMessage(error));
       await loadItems(query.trim(), true);
     } finally {
       setSendingId(null);

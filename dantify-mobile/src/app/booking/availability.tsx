@@ -16,9 +16,12 @@ import dentistSearchService, {
 } from '@/services/dentist-search-service';
 import {
   bookingService,
-  type BookingAvailableSlot,
   type PublicClinicServiceOffering,
 } from '@/services/booking-service';
+import {
+  BookingScheduleSelector,
+  type BookingScheduleValue,
+} from '@/components/booking';
 
 type SelectedService = {
   clinic_service_offering_id: number;
@@ -28,33 +31,10 @@ type SelectedService = {
   duration_minutes: number;
 };
 
-const localDate = (date: Date) => {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
 
 const currency = (value: number) =>
   `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
-const timeLabel = (value: string) => {
-  const [h, m] = value.split(':').map(Number);
-  const date = new Date();
-  date.setHours(h, m, 0, 0);
-  return date.toLocaleTimeString('en-IN', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-};
-
-const dateLabel = (date: Date) =>
-  date.toLocaleDateString('en-IN', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
 
 const clinicAddress = (clinic: PublicSearchClinic) =>
   [clinic.address, clinic.city, clinic.state, clinic.postal_code]
@@ -92,12 +72,9 @@ export default function AvailabilityScreen() {
   const [clinicId, setClinicId] = useState<number | null>(null);
   const [offerings, setOfferings] = useState<PublicClinicServiceOffering[]>([]);
   const [quantities, setQuantities] = useState<Record<number, number>>({});
-  const [date, setDate] = useState(localDate(new Date()));
-  const [slots, setSlots] = useState<BookingAvailableSlot[]>([]);
-  const [slot, setSlot] = useState<BookingAvailableSlot | null>(null);
+  const [bookingSchedule, setBookingSchedule] = useState<BookingScheduleValue | null>(null);
   const [loadingDentist, setLoadingDentist] = useState(true);
   const [loadingServices, setLoadingServices] = useState(false);
-  const [loadingSlots, setLoadingSlots] = useState(false);
   const [error, setError] = useState('');
 
   const selectedClinic = clinics.find((item) => item.id === clinicId) ?? null;
@@ -116,15 +93,6 @@ export default function AvailabilityScreen() {
   const totalPrice = selectedServices.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalDuration = selectedServices.reduce((sum, item) => sum + item.duration_minutes * item.quantity, 0);
 
-  const dates = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return Array.from({ length: 14 }, (_, index) => {
-      const next = new Date(today);
-      next.setDate(today.getDate() + index);
-      return next;
-    });
-  }, []);
 
   const loadDentist = useCallback(async () => {
     if (!Number.isInteger(dentistId) || dentistId <= 0) {
@@ -162,8 +130,7 @@ export default function AvailabilityScreen() {
       setLoadingServices(true);
       setOfferings([]);
       setQuantities({});
-      setSlot(null);
-      setSlots([]);
+      setBookingSchedule(null);
       try {
         const response = await bookingService.getPublicClinicServices(clinicId);
         if (!active) return;
@@ -181,40 +148,7 @@ export default function AvailabilityScreen() {
     return () => { active = false; };
   }, [clinicId]);
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      if (!clinicId || !selectedServices.length) {
-        setSlots([]);
-        setSlot(null);
-        return;
-      }
-      setLoadingSlots(true);
-      setSlot(null);
-      try {
-        const response = await bookingService.getAvailability({
-          dentist_id: dentistId,
-          clinic_id: clinicId,
-          date,
-          services: selectedServices.map((item) => ({
-            clinic_service_offering_id: item.clinic_service_offering_id,
-            quantity: item.quantity,
-          })),
-        });
-        if (active) setSlots((response.data.slots ?? []).filter((item) => item.available));
-      } catch (e) {
-        console.warn('[BookingAvailability] Slot request failed', e);
-        if (active) {
-          setSlots([]);
-          setError('Unable to retrieve appointment slots. Please try again.');
-        }
-      } finally {
-        if (active) setLoadingSlots(false);
-      }
-    };
-    void load();
-    return () => { active = false; };
-  }, [clinicId, date, dentistId, selectedServices]);
+
 
   const changeQuantity = (id: number, delta: number) => {
     setQuantities((current) => {
@@ -224,11 +158,11 @@ export default function AvailabilityScreen() {
       else next[id] = Math.min(quantity, 100);
       return next;
     });
-    setSlot(null);
+    setBookingSchedule(null);
   };
 
   const continueToReview = () => {
-    if (!dentist || !selectedClinic || !slot || selectedServices.length === 0) return;
+    if (!dentist || !selectedClinic || !bookingSchedule || selectedServices.length === 0) return;
     router.push({
       pathname: '/booking/review',
       params: {
@@ -236,10 +170,10 @@ export default function AvailabilityScreen() {
         dentistName: dentist.name,
         clinicId: String(selectedClinic.id),
         clinicName: selectedClinic.name,
-        date,
-        startTime: slot.start_time,
-        endTime: slot.end_time,
-        durationMinutes: String(slot.duration_minutes || totalDuration),
+        date: bookingSchedule.date,
+        startTime: bookingSchedule.startTime,
+        endTime: bookingSchedule.endTime,
+        durationMinutes: String(bookingSchedule.durationMinutes || totalDuration),
         services: JSON.stringify(selectedServices),
         estimatedPrice: String(totalPrice),
       },
@@ -266,7 +200,7 @@ export default function AvailabilityScreen() {
 
   if (error && !dentist) {
     return <View style={{ flex: 1, padding: 20, justifyContent: 'center', backgroundColor: colors.background }}>
-      <Text style={heading}>Appointment availability</Text>
+      <Text style={heading}>Booking availability</Text>
       <Text style={{ color: colors.danger }}>{error}</Text>
       <Pressable onPress={() => void loadDentist()} style={{ marginTop: 18, backgroundColor: colors.primary, padding: 14, borderRadius: 9 }}>
         <Text style={{ color: colors.textInverse, textAlign: 'center', fontWeight: '700' }}>Retry</Text>
@@ -282,8 +216,8 @@ export default function AvailabilityScreen() {
           <Pressable onPress={() => router.replace('/booking' as never)}><Text style={{ color: colors.primary, fontWeight: '600' }}>Find dentist</Text></Pressable>
         </View>
 
-        <Text style={{ color: colors.text, fontSize: 22, fontWeight: '800', marginBottom: 5 }}>Book an Appointment</Text>
-        <Text style={[muted, { marginBottom: 16 }]}>Choose a clinic, treatment, date and available time.</Text>
+        <Text style={{ color: colors.text, fontSize: 22, fontWeight: '800', marginBottom: 5 }}>Create a Booking</Text>
+        <Text style={[muted, { marginBottom: 16 }]}>Choose a clinic, services, booking date and available time.</Text>
 
         <View style={card}>
           <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '700', marginBottom: 5 }}>SELECTED DENTIST</Text>
@@ -295,7 +229,7 @@ export default function AvailabilityScreen() {
         {clinics.length === 0 ? <Text style={muted}>No clinic associations are available for this dentist.</Text> :
           clinics.map((clinic) => {
             const selected = clinic.id === clinicId;
-            return <Pressable key={clinic.id} onPress={() => { setClinicId(clinic.id); setSlot(null); }} style={[card, { flexDirection: 'row', alignItems: 'center', borderColor: selected ? colors.primary : colors.border, borderWidth: selected ? 2 : 1 }]}>
+            return <Pressable key={clinic.id} onPress={() => { setClinicId(clinic.id); setBookingSchedule(null); }} style={[card, { flexDirection: 'row', alignItems: 'center', borderColor: selected ? colors.primary : colors.border, borderWidth: selected ? 2 : 1 }]}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.text, fontWeight: '700' }}>{clinic.name}</Text>
                 <Text style={[muted, { marginTop: 4 }]}>{clinicAddress(clinic)}</Text>
@@ -338,33 +272,21 @@ export default function AvailabilityScreen() {
           <SummaryRow label="Estimated total" value={currency(totalPrice)} colors={colors} strong />
         </View>}
 
-        <Text style={[heading, { marginTop: 10 }]}>3. Select Date</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 5 }}>
-          {dates.map((item) => {
-            const value = localDate(item);
-            const selected = value === date;
-            return <Pressable key={value} onPress={() => { setDate(value); setSlot(null); }} style={{ minWidth: 76, alignItems: 'center', paddingVertical: 10, paddingHorizontal: 8, borderRadius: 10, borderWidth: 1, borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.primary : colors.surface }}>
-              <Text style={{ color: selected ? colors.textInverse : colors.text, fontWeight: '700', fontSize: 12 }}>{dateLabel(item)}</Text>
-            </Pressable>;
-          })}
-        </ScrollView>
-
-        <Text style={[heading, { marginTop: 16 }]}>4. Select Available Time</Text>
-        {!selectedServices.length ? <Text style={muted}>Select at least one service to check available times.</Text> :
-          loadingSlots ? <View style={{ padding: 18 }}><ActivityIndicator color={colors.primary} /><Text style={[muted, { textAlign: 'center', marginTop: 8 }]}>Checking live availability...</Text></View> :
-          slots.length === 0 ? <Text style={muted}>No available slots for this date and service selection. Try another date.</Text> :
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9 }}>
-            {slots.map((item, index) => {
-              const selected = slot?.start_time === item.start_time;
-              return <Pressable key={`${item.start_time}-${index}`} onPress={() => setSlot(item)} style={{ paddingVertical: 11, paddingHorizontal: 14, borderRadius: 9, borderWidth: 1, borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.primary : colors.surface }}>
-                <Text style={{ color: selected ? colors.textInverse : colors.text, fontWeight: '600' }}>{timeLabel(item.start_time)}</Text>
-              </Pressable>;
-            })}
-          </View>}
+        <Text style={[heading, { marginTop: 10 }]}>3. Select Booking Date and Time</Text>
+        <BookingScheduleSelector
+          dentistId={dentistId}
+          clinicId={clinicId ?? 0}
+          services={selectedServices.map((item) => ({
+            clinic_service_offering_id: item.clinic_service_offering_id,
+            quantity: item.quantity,
+          }))}
+          value={bookingSchedule}
+          onChange={setBookingSchedule}
+        />
 
         {!!error && <Text style={{ color: colors.danger, marginTop: 10 }}>{error}</Text>}
 
-        <Pressable onPress={continueToReview} disabled={!slot || !selectedServices.length} style={{ marginTop: 22, padding: 15, borderRadius: 10, alignItems: 'center', backgroundColor: colors.primary, opacity: slot && selectedServices.length ? 1 : 0.5 }}>
+        <Pressable onPress={continueToReview} disabled={!bookingSchedule || !selectedServices.length} style={{ marginTop: 22, padding: 15, borderRadius: 10, alignItems: 'center', backgroundColor: colors.primary, opacity: bookingSchedule && selectedServices.length ? 1 : 0.5 }}>
           <Text style={{ color: colors.textInverse, fontWeight: '700', fontSize: 15 }}>Continue to Review</Text>
         </Pressable>
       </ScrollView>

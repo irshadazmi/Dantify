@@ -10,8 +10,6 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AppText } from '@/components/ui/app-text';
-import AppHeader from '@/components/ui/app-header';
-import TabBar from '@/components/tab-bar';
 import PublicBookingTabBar from '@/components/booking/public-booking-tab-bar';
 import PublicBookingHeader from '@/components/booking/public-booking-header';
 import { useAuth } from '@/contexts/auth-context';
@@ -403,7 +401,6 @@ export default function DentistDetailsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {isAuthenticated ? <AppHeader title="Dentist Profile" /> : null}
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 18, paddingBottom: 24 }}
@@ -710,7 +707,7 @@ export default function DentistDetailsScreen() {
         </Pressable>
       </View>
 
-      {isAuthenticated ? <TabBar /> : <PublicBookingTabBar />}
+      {!isAuthenticated ? <PublicBookingTabBar /> : null}
     </View>
   );
 }

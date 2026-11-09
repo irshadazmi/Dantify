@@ -1,18 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+
   Image,
   Keyboard,
   Pressable,
   ScrollView,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AppText } from '@/components/ui/app-text';
-import AppHeader from '@/components/ui/app-header';
-import TabBar from '@/components/tab-bar';
 import PublicBookingTabBar from '@/components/booking/public-booking-tab-bar';
 import PublicSearchBar from '@/components/booking/public-search-bar';
 import PublicBookingHeader from '@/components/booking/public-booking-header';
@@ -380,7 +380,6 @@ export default function SearchResultsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {isAuthenticated ? <AppHeader title="Search Results" /> : null}
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28, flexGrow: 1 }}
@@ -400,14 +399,47 @@ export default function SearchResultsScreen() {
           onSearch={submitSearch}
           onVoiceSearch={() => {
             Keyboard.dismiss();
-            Alert.alert(
+            showAppDialog(
               'Voice search',
-              'Voice-to-text will be enabled in the voice-search phase. You can use the search box in the meantime.',
+              'Voice search is being prepared. You can continue with text search for now.',
             );
           }}
-          placeholder="Dentist, specialization or clinic"
-          accessibilityLabel="Edit dentist or clinic search"
+          placeholder="e.g. Dentist name or specialization"
+          helperText="Search by dentist name or specialization. Natural-language understanding will be connected in a later backend step."
+          accessibilityLabel="Describe your dental care need or edit dentist and clinic search"
         />
+
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+          {[
+            { label: 'General dentist', query: 'General' },
+            { label: 'Orthodontist', query: 'Orthodont' },
+            { label: 'Pediatric dentist', query: 'Pediatric' },
+            { label: 'Endodontist', query: 'Endodont' },
+          ].map((suggestion) => (
+            <Pressable
+              key={suggestion.label}
+              onPress={() => {
+                setSearchText(suggestion.query);
+                setSubmittedQuery(suggestion.query);
+                Keyboard.dismiss();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Search ${suggestion.label}`}
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+                borderRadius: 18,
+                paddingHorizontal: 12,
+                paddingVertical: 7,
+              }}
+            >
+              <AppText style={{ color: colors.primary, fontSize: 11, fontWeight: '600' }}>
+                {suggestion.label}
+              </AppText>
+            </Pressable>
+          ))}
+        </View>
 
         <View
           style={{
@@ -518,7 +550,7 @@ export default function SearchResultsScreen() {
         </AppText>
       </ScrollView>
 
-      {isAuthenticated ? <TabBar /> : <PublicBookingTabBar />}
+      {!isAuthenticated ? <PublicBookingTabBar /> : null}
 
     </View>
   );

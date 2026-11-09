@@ -21,10 +21,18 @@ export const TAB_ITEMS = [
     roles: ALL_ROLES,
   },
   {
-    name: '/appointments',
-    title: 'Appointments',
+    name: '/booking',
+    title: 'My Bookings',
+    roleTitles: {
+      [ROLES.SUPER_ADMIN]: 'All Bookings',
+      [ROLES.CLINIC]: 'Our Bookings',
+      [ROLES.DENTIST]: 'My Bookings',
+      [ROLES.STAFF]: 'Our Bookings',
+      [ROLES.PATIENT]: 'My Bookings',
+    },
     icon: 'calendar.badge.clock',
     roles: [
+      ROLES.SUPER_ADMIN,
       ROLES.CLINIC,
       ROLES.DENTIST,
       ROLES.STAFF,

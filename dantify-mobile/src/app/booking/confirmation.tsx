@@ -12,6 +12,7 @@ import { useAppColors } from '@/hooks/use-app-colors';
 import { useAuth } from '@/contexts/auth-context';
 import { bookingService } from '@/services/booking-service';
 import type { Booking } from '@/types/booking';
+import { formatBookingDateTime } from '@/utils/booking-date';
 
 const param = (value?: string | string[]) =>
   Array.isArray(value) ? value[0] ?? '' : value ?? '';
@@ -20,13 +21,7 @@ const currency = (value: number) =>
   `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
 function formatDateTime(value: string | null) {
-  if (!value) return 'Not available';
-  const date = new Date(value.replace(' ', 'T'));
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString('en-IN', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    hour: 'numeric', minute: '2-digit',
-  });
+  return formatBookingDateTime(value);
 }
 
 export default function BookingConfirmationScreen() {
@@ -190,7 +185,7 @@ export default function BookingConfirmationScreen() {
         )}
 
         <Pressable
-          onPress={() => router.replace('/appointments' as never)}
+          onPress={() => router.replace('/booking' as never)}
           style={{
             marginTop: 20, minHeight: 52, borderRadius: 10,
             backgroundColor: colors.primary, alignItems: 'center',

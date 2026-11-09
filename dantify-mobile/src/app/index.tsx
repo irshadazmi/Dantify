@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+
   Image,
   Keyboard,
   Pressable,
   ScrollView,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { useRouter } from 'expo-router';
 
 import { AppText } from '@/components/ui/app-text';
@@ -100,7 +102,7 @@ export default function PublicLandingScreen() {
 
   const openAppointments = useCallback(() => {
     if (isAuthenticated) {
-      router.push('/appointments' as never);
+      router.push('/booking' as never);
     } else {
       router.push('/(auth)/login' as never);
     }
@@ -125,9 +127,9 @@ export default function PublicLandingScreen() {
   const openVoiceSearch = useCallback(() => {
     // The microphone UI is included now. Speech-to-text will be connected
     // after confirming the project's Expo SDK and native speech package.
-    Alert.alert(
+    showAppDialog(
       'Voice search',
-      'Voice-to-text will be enabled in the voice-search phase. You can use the search box in the meantime.',
+      'Voice search is being prepared. You can describe your dental care need using the text search for now.',
     );
   }, []);
 
@@ -148,7 +150,7 @@ export default function PublicLandingScreen() {
           <View style={styles.heroCopy}>
             <AppText style={styles.heroTitle}>Find the right dentist for you</AppText>
             <AppText style={styles.heroSubtitle}>
-              Search dentists or specializations near you.
+              Tell us what dental care you need. Search by dentist, specialization or clinic.
             </AppText>
           </View>
           <Image
@@ -165,12 +167,10 @@ export default function PublicLandingScreen() {
             onChangeText={setQuery}
             onSearch={() => openSearch()}
             onVoiceSearch={openVoiceSearch}
-            placeholder="Dentist, specialization or clinic"
-            accessibilityLabel="Search dentists, clinics or dental concerns"
+            placeholder="e.g. Orthodontist, teeth cleaning..."
+            helperText="You can search using a dentist name, specialization or a short description of your dental need."
+            accessibilityLabel="Describe your dental care need or search dentists and clinics"
           />
-          <AppText style={styles.searchHint}>
-            Search by dentist, specialization or location
-          </AppText>
         </View>
 
         <View style={styles.section}>

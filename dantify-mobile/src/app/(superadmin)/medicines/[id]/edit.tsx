@@ -2,9 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  View,
+
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AppText } from '@/components/ui/app-text';
@@ -91,7 +93,7 @@ export default function EditMedicineScreen() {
         }
       } catch (error) {
         if (mounted) {
-          Alert.alert(
+          showAppDialog(
             'Unable to load medicine',
             getErrorMessage(error),
             [
@@ -125,7 +127,7 @@ export default function EditMedicineScreen() {
       const updated = await updateMedicine(medicineId, payload);
       setMedicine(updated);
 
-      Alert.alert(
+      showAppDialog(
         'Medicine updated',
         `"${updated.name}" has been updated successfully.`,
         [
@@ -137,7 +139,7 @@ export default function EditMedicineScreen() {
         ],
       );
     } catch (error) {
-      Alert.alert(
+      showAppDialog(
         'Unable to update medicine',
         getErrorMessage(error),
       );

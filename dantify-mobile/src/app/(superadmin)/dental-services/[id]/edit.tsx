@@ -2,12 +2,14 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+
   Pressable,
   ScrollView,
   Switch,
-  View,
+  View
 } from 'react-native';
+
+import { showAppDialog } from "@/components/ui/app-dialog";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AppText } from '@/components/ui/app-text';
@@ -99,7 +101,7 @@ export default function EditDentalServiceScreen() {
         setIsActive(service.is_active);
       } catch (error) {
         if (mounted) {
-          Alert.alert(
+          showAppDialog(
             'Unable to load service',
             getErrorMessage(error),
             [
@@ -131,7 +133,7 @@ export default function EditDentalServiceScreen() {
     const numericDuration = Number(duration);
 
     if (!serviceName) {
-      Alert.alert('Service name required', 'Please enter a service name.');
+      showAppDialog('Service name required', 'Please enter a service name.');
       return;
     }
 
@@ -140,7 +142,7 @@ export default function EditDentalServiceScreen() {
       !Number.isFinite(numericPrice) ||
       numericPrice < 0
     ) {
-      Alert.alert('Invalid price', 'Please enter a valid default price.');
+      showAppDialog('Invalid price', 'Please enter a valid default price.');
       return;
     }
 
@@ -149,7 +151,7 @@ export default function EditDentalServiceScreen() {
       !Number.isInteger(numericDuration) ||
       numericDuration <= 0
     ) {
-      Alert.alert(
+      showAppDialog(
         'Invalid duration',
         'Duration must be a positive whole number of minutes.',
       );
@@ -169,7 +171,7 @@ export default function EditDentalServiceScreen() {
 
       await updateDentalService(serviceId, payload);
 
-      Alert.alert(
+      showAppDialog(
         'Service updated',
         `"${serviceName}" has been updated successfully.`,
         [
@@ -183,7 +185,7 @@ export default function EditDentalServiceScreen() {
         ],
       );
     } catch (error) {
-      Alert.alert('Unable to update service', getErrorMessage(error));
+      showAppDialog('Unable to update service', getErrorMessage(error));
     } finally {
       setSaving(false);
     }
